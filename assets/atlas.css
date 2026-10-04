@@ -272,7 +272,7 @@ a { color: inherit; }
 .plate--en .plate__main { text-transform: uppercase; letter-spacing: 0.035em; font-size: 15px; }
 .plate--en .plate__code { color: var(--london); margin-left: 0.45em; }
 .plate--en .plate__rule { display: block; height: 2px; background: var(--london); margin: 2px 0 1px; }
-.plate--en .plate__sub { font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; }
+.plate--en .plate__sub { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
 .plate--zh {
   background: var(--plate-zh-bg);
   color: var(--plate-zh-ink);
@@ -281,7 +281,7 @@ a { color: inherit; }
   box-shadow: inset 0 0 0 2px var(--plate-zh-bg), inset 0 0 0 3px var(--plate-zh-ink);
 }
 .plate--zh .plate__main { font-family: var(--font-cjk-sans); font-weight: 700; font-size: 14px; letter-spacing: 0.12em; }
-.plate--zh .plate__sub { font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; }
+.plate--zh .plate__sub { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
 .plate--plain {
   color: var(--ink);
   padding: 4px 0;
@@ -414,6 +414,7 @@ a { color: inherit; }
   border-bottom: 1px solid var(--rule-strong);
 }
 .panel { min-width: 0; scroll-margin-top: var(--map-h); }
+.panel:focus { outline: none; }
 .no-map .mapzone { display: none; }
 .no-map .panel { scroll-margin-top: 0; }
 
@@ -526,17 +527,17 @@ a { color: inherit; }
 .leaflet-tooltip-bottom.atlas-tip::before { border-bottom-color: var(--ink); }
 .leaflet-tooltip-left.atlas-tip::before { border-left-color: var(--ink); }
 .leaflet-tooltip-right.atlas-tip::before { border-right-color: var(--ink); }
-.leaflet-interactive.arrival-ring { stroke: var(--accent); fill: var(--accent); fill-opacity: 0.1; stroke-width: 1.5; stroke-dasharray: 5 4; stroke-opacity: 0.95; }
-.leaflet-interactive.arrival-ring, path.arrival-ring { pointer-events: none; }
+.leaflet-overlay-pane path.arrival-ring {
+  stroke: var(--accent); fill: var(--accent); fill-opacity: 0.1; stroke-width: 1.5; stroke-dasharray: 5 4; stroke-opacity: 1; pointer-events: none;
+}
 
 /* markers: compact category plates; city-accent ring when selected */
-.pin-wrap { background: transparent; border: 0; outline: none; }
+.pin-wrap { display: grid; place-items: center; background: transparent; border: 0; outline: none; }
 .pin {
-  --cat: var(--cat-other);
   display: grid; place-items: center;
   width: 26px; height: 26px;
   border-radius: 5px;
-  background: var(--cat);
+  background: var(--cat, var(--cat-other));
   color: var(--on-cat);
   font: 600 14px/1 var(--font-cjk-sans);
   box-shadow: 0 0 0 1.5px var(--marker-halo);
@@ -546,6 +547,7 @@ a { color: inherit; }
 .pin-wrap.is-hot .pin { transform: scale(1.22); }
 .pin-wrap.is-selected .pin { transform: scale(1.12); box-shadow: 0 0 0 2px var(--marker-halo), 0 0 0 5px var(--accent); }
 .pin-wrap.is-muted { pointer-events: none; }
+.map[data-zoomband="far"] .pin { width: 20px; height: 20px; font-size: 11.5px; border-radius: 4px; }
 .pin-wrap.is-muted .pin { opacity: 0.22; transform: scale(0.8); }
 
 .fitctl button .icon { width: 16px; height: 16px; }
@@ -685,6 +687,7 @@ a { color: inherit; }
 .coords { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
 .coords .mono { font-size: var(--fs-base); letter-spacing: -0.01em; }
 .note { font-size: var(--fs-sm); color: var(--ink-2); line-height: 1.6; }
+.facts + .note { margin-top: 12px; }
 .maplinks { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 
 .verify { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-size: var(--fs-sm); color: var(--ink-2); }
@@ -719,7 +722,7 @@ a { color: inherit; }
 .week.is-now .week__bar { border-bottom-color: var(--ink); }
 .week__bar i { display: block; height: 5px; flex: none; border-radius: 1px; background: var(--accent); }
 .week__bar i.more { height: 5px; background: var(--ink-3); }
-.week__label { font-family: var(--font-mono); font-size: 10px; line-height: 1; white-space: nowrap; }
+.week__label { font-size: 11px; line-height: 1; white-space: nowrap; min-height: 11px; }
 .week.is-now .week__label { color: var(--ink); font-weight: 500; }
 button.week:hover .week__bar { background: var(--wash); }
 button.week[disabled] { cursor: default; }
@@ -730,8 +733,8 @@ button.week[disabled] { cursor: default; }
 .evday__rel { margin-left: auto; font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--ink-3); font-weight: 400; }
 .evday__city { font-size: var(--fs-xs); font-weight: 400; color: var(--ink-3); }
 
-.ev { display: grid; grid-template-columns: 4.6rem minmax(0, 1fr); gap: 0 14px; padding: 14px 0 16px; border-bottom: 1px solid var(--rule); }
-.ev__when { display: flex; flex-direction: column; gap: 3px; padding-left: 8px; border-left: 3px solid var(--accent); min-width: 0; }
+.ev { display: grid; grid-template-columns: 4.75rem minmax(0, 1fr); gap: 0 14px; padding: 14px 0 16px; border-bottom: 1px solid var(--rule); }
+.ev__when { display: flex; flex-direction: column; gap: 3px; padding-left: 8px; border-left: 3px solid var(--accent); min-width: 0; align-self: start; }
 .ev__start { font-family: var(--font-mono); font-weight: 500; font-size: var(--fs-md); line-height: 1.1; }
 .ev__end { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--ink-2); }
 .ev__zone { font-size: 11px; color: var(--accent-ink); font-weight: 600; margin-top: 2px; }
@@ -826,8 +829,8 @@ button.week[disabled] { cursor: default; }
   .panel__scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
   .no-map .atlas { grid-template-columns: minmax(0, 760px); justify-content: center; }
   .group__head, .citysection__head { position: sticky; top: 0; z-index: 3; background: var(--paper); }
-  .citysection__head { padding: 6px 0; margin: 10px 0 0; }
-  .citysection__head + .group .group__head { top: 0; }
+  .citysection__head { height: 58px; margin: 6px 0 0; z-index: 4; }
+  .atlas[data-city="BOTH"] .group__head { top: 58px; }
   .evday__head { position: sticky; top: 0; z-index: 3; background: var(--paper); }
   .mapcap { left: 14px; top: 14px; }
 }
@@ -846,8 +849,7 @@ button.week[disabled] { cursor: default; }
   .themebtn__text { display: none; }
   .plate--lg.plate--en .plate__main { font-size: 18px; }
   .mapcap__time { display: none; }
-  .ev { grid-template-columns: 4rem minmax(0, 1fr); gap: 0 12px; }
-  .metagrid { grid-template-columns: minmax(0, 1fr); }
+  .ev { gap: 0 12px; }
 }
 
 /* ---------- motion ---------- */
