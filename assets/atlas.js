@@ -80,12 +80,12 @@
   const mqDark = window.matchMedia('(prefers-color-scheme: dark)');
 
   let collator;
-  try { collator = new Intl.Collator('zh-Hans-CN-u-co-pinyin', { numeric: true, sensitivity: 'base' }); } catch (e) { collator = new Intl.Collator(undefined, { numeric: true }); }
+  try { collator = new Intl.Collator('zh-Hans-CN-u-co-pinyin', { numeric: true, sensitivity: 'base' }); } catch { collator = new Intl.Collator(undefined, { numeric: true }); }
   const cmp = (a, b) => collator.compare(a, b);
 
   const store = {
-    get(key) { try { return window.localStorage.getItem(key); } catch (e) { return null; } },
-    set(key, value) { try { window.localStorage.setItem(key, value); } catch (e) { /* storage unavailable: keep working */ } },
+    get(key) { try { return window.localStorage.getItem(key); } catch { return null; } },
+    set(key, value) { try { window.localStorage.setItem(key, value); } catch { /* storage unavailable: keep working */ } },
   };
 
   /** Build an element. attrs: class, text, on<Event>, boolean/attribute values. Children: nodes or strings (as text). */
@@ -169,7 +169,7 @@
     try {
       const url = new URL(String(u));
       return url.protocol === 'https:' || url.protocol === 'http:' ? url : null;
-    } catch (e) { return null; }
+    } catch { return null; }
   }
   /** Key for matching sources[] to places/events/series: host case, "www.", protocol and trailing slash ignored. */
   function urlKey(u) {
@@ -192,7 +192,7 @@
 
   function extLink(u, text, cls = 'link ext') {
     const url = safeUrl(u);
-    if (!url) return h('span', { class: 'muted' }, text || str(u) || '无有效链接');
+    if (!url) return h('span', { class: 'muted' }, str(u) ? `${str(u)}（不是可打开的网页链接）` : '无有效链接');
     return h('a', { class: cls, href: url.href, target: '_blank', rel: 'noopener noreferrer' },
       h('span', null, text || url.href), icon('ext'), h('span', { class: 'vh' }, '（在新窗口打开）'));
   }
@@ -235,7 +235,7 @@
   }
   function validTz(tz) {
     if (!tz) return null;
-    try { dtf(tz, { hour: 'numeric' }); return tz; } catch (e) { return null; }
+    try { dtf(tz, { hour: 'numeric' }); return tz; } catch { return null; }
   }
   const dayIndex = (ts, tz) => { const p = partsOf(ts, tz); return Math.round(Date.UTC(p.y, p.mo - 1, p.d) / DAY); };
   const offsetMin = (ts, tz) => {
@@ -530,6 +530,8 @@
     mapCity: 'LONDON',
     themePref: 'system',
     listScroll: 0,
+    returnTab: 'places',
+    returnScroll: 0,
     mapsOff: false,
     pastOpen: false,
     partition: '',
@@ -567,11 +569,11 @@
     const token = currentToken();
     if (!TOKEN_RE.test(token)) return;
     if (readHash() === token) return;
-    try { history.replaceState(null, '', location.pathname + location.search + '#' + token); } catch (e) { /* sandboxed */ }
+    try { history.replaceState(null, '', location.pathname + location.search + '#' + token); } catch { /* sandboxed */ }
   }
   function readHash() {
     let t = location.hash.replace(/^#/, '');
-    try { t = decodeURIComponent(t); } catch (e) { return null; }
+    try { t = decodeURIComponent(t); } catch { return null; }
     return TOKEN_RE.test(t) ? t : null;
   }
   /** Apply a token from the address bar or an in-page link. Returns true when it was understood. */
@@ -654,6 +656,12 @@
     btn.title = `主题：${THEME_TEXT[state.themePref]}（点击切换为${THEME_TEXT[next]}）`;
     $('[data-theme-text]').textContent = THEME_TEXT[state.themePref];
     $('[data-theme-icon]').replaceChildren(icon(state.themePref === 'system' ? 'auto' : state.themePref === 'light' ? 'sun' : 'moon'));
+    // Keep the browser chrome colour in step with a forced theme.
+    const paper = getComputedStyle(root).getPropertyValue('--paper').trim();
+    for (const meta of $$('meta[name="theme-color"]')) {
+      if (!meta.dataset.original) meta.dataset.original = meta.getAttribute('content');
+      meta.setAttribute('content', state.themePref === 'system' ? meta.dataset.original : paper);
+    }
     updateTiles();
   }
 
@@ -673,7 +681,7 @@
           zoomControl: false,
           minZoom: 3,
           maxZoom: 19,
-          zoomSnap: 0.5,
+          zoomSnap: 1, // whole zoom levels keep raster tiles crisp and seam-free
           wheelPxPerZoomLevel: 90,
           center: [ref.lat, ref.lng],
           zoom: 12,
@@ -709,7 +717,7 @@
           new ResizeObserver(() => onMapResize(m)).observe(el);
         }
       }
-    } catch (err) {
+    } catch {
       mapsOff();
     }
   }
@@ -773,6 +781,7 @@
     if (!mapVisible(m)) { m.fitted = false; return; }
     const pts = state.data.places.filter((p) => p.city === key && p.hasCoords).map((p) => [p.lat, p.lng]);
     const anim = animate && !mqReduce.matches;
+    m.map.invalidateSize({ animate: false, pan: false });
     if (!pts.length) {
       m.map.setView([CITIES[key].ref.lat, CITIES[key].ref.lng], 12, { animate: anim });
     } else {
@@ -874,9 +883,15 @@
   function flyTo(m, place, animate) {
     const L = window.L;
     const ll = L.latLng(place.lat, place.lng);
-    const span = Math.max(place.radius || 80, 60) * 2 * 3.6;
-    let z = m.map.getBoundsZoom(ll.toBounds(span), false, L.point(24, 24));
-    z = Math.max(13, Math.min(17, z));
+    // The container may have just been revealed (city switch); Leaflet caches its size, so refresh it first.
+    m.map.invalidateSize({ animate: false, pan: false });
+    // Pick the whole zoom level at which the arrival ring's radius is about 22% of the map's shorter side
+    // (Web Mercator: metres per pixel = 156543.03 · cos φ / 2^z for 256 px tiles).
+    const size = m.map.getSize();
+    const targetPx = 0.22 * Math.min(size.x, size.y);
+    const radius = Math.max(place.radius || 80, 40);
+    let z = Math.floor(Math.log2((targetPx * 156543.03 * Math.cos((place.lat * Math.PI) / 180)) / radius));
+    z = Number.isFinite(z) ? Math.max(13, Math.min(18, z)) : 16;
     if (!animate || mqReduce.matches) m.map.setView(ll, z, { animate: false });
     else m.map.flyTo(ll, z, { duration: 0.75 });
     m.fitted = true;
@@ -970,7 +985,7 @@
       try {
         if (!navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') { fallback(); return; }
         navigator.clipboard.writeText(text).then(() => done(true), fallback);
-      } catch (e) { fallback(); }
+      } catch { fallback(); }
     });
     return btn;
   }
@@ -991,9 +1006,13 @@
     const d = state.data;
     const set = (k, v) => { const el = $(`[data-count="${k}"]`); if (el) el.textContent = d ? String(v) : ''; };
     if (!d) return;
+    const up = d.events.filter((e) => (state.city === 'BOTH' || e.city === state.city) && isUpcoming(e)).length;
     set('places', countPlaces());
-    set('events', d.events.filter((e) => (state.city === 'BOTH' || e.city === state.city) && isUpcoming(e)).length);
+    set('events', up);
     set('sources', d.sources.length);
+    $('#tab-places').setAttribute('aria-label', `地点 ${countPlaces()} 处`);
+    $('#tab-events').setAttribute('aria-label', `活动 ${up} 场即将举行`);
+    $('#tab-sources').setAttribute('aria-label', `来源 ${d.sources.length} 条`);
   }
 
   function scroller() { return mqDesktop.matches ? els.scroll : doc.scrollingElement; }
@@ -1094,6 +1113,7 @@
     }
 
     results.replaceChildren();
+    if (state.city !== 'BOTH') results.appendChild(h('h2', { class: 'vh' }, `${CITIES[state.city].zh}地点，按区域排列`));
     if (!f.shown.length) {
       const clearBtn = h('button', { type: 'button', class: 'btn' }, '清除搜索和筛选');
       clearBtn.addEventListener('click', () => {
@@ -1134,7 +1154,19 @@
         results.appendChild(section);
       }
     }
+    results.appendChild(provenance());
     applyMarkerFilter(f.active ? new Set(f.shown.map((p) => p.id)) : null);
+  }
+
+  /** One line under the list: where the data comes from and how fresh it is. */
+  function provenance() {
+    const d = state.data;
+    const latest = d.places.map((p) => p.verifiedAt).filter((x) => x != null).reduce((m, x) => Math.max(m, x), 0);
+    const toSources = h('a', { class: 'link', href: '#sources', 'data-route': 'sources' }, '查看全部来源');
+    return h('p', { class: 'foot' },
+      `资料来自公开数据文件 content.json（${d.meta.format || '格式未注明'} v${d.meta.version || '?'}，坐标 ${d.meta.coordinateSystem || '未注明'}）`,
+      latest ? `，地点最近核验于 ${ymd(latest, VERIFY_TZ)}。` : '。',
+      '每条都附来源链接；出发前请以来源为准。', toSources);
   }
 
   function groupByRegion(list) {
@@ -1167,7 +1199,8 @@
     const d = state.data;
     const p = d && d.placeById.get(id);
     if (!p) return;
-    if (state.tab === 'places' && !state.placeId) state.listScroll = scroller().scrollTop;
+    if (state.tab === 'places' && !state.placeId) { state.listScroll = scroller().scrollTop; state.returnTab = 'places'; }
+    else if (state.tab !== 'places') { state.returnTab = state.tab; state.returnScroll = scroller().scrollTop; }
     state.placeId = id;
     if (!inCity(p.city)) setCity(p.city, { render: false });
     if (state.city === 'BOTH') setMapCity(p.city);
@@ -1186,6 +1219,17 @@
     const id = state.placeId;
     state.placeId = null;
     selectOnMap(null);
+    if (state.returnTab !== 'places') {
+      // Opened from 活动 or 来源: go back there, to the same scroll position and link.
+      const tab = state.returnTab;
+      state.returnTab = 'places';
+      setTab(tab, { render: false });
+      render();
+      scroller().scrollTop = state.returnScroll;
+      const link = id && els.views[tab].querySelector(`[data-route="${CSS.escape(id)}"]`);
+      if (link) link.focus({ preventScroll: true });
+      return;
+    }
     render();
     const sc = scroller();
     if (mqDesktop.matches) sc.scrollTop = state.listScroll;
@@ -1206,7 +1250,8 @@
   function renderDetail(p) {
     const view = els.views.places;
     const d = state.data;
-    const back = h('button', { type: 'button', class: 'btn btn--quiet detail__back' }, icon('back'), `返回地点列表`);
+    const backTo = { places: '返回地点列表', events: '返回活动', sources: '返回来源' }[state.returnTab] || '返回地点列表';
+    const back = h('button', { type: 'button', class: 'btn btn--quiet detail__back' }, icon('back'), backTo);
     back.addEventListener('click', closePlace);
 
     const addrText = h('p', null, p.address || '地址未注明');
@@ -1333,7 +1378,7 @@
       const f = new Intl.NumberFormat('zh-CN', { style: 'currency', currency: e.currency || 'XXX' });
       const digits = f.resolvedOptions().maximumFractionDigits;
       return f.format(e.priceMinor / Math.pow(10, digits));
-    } catch (err) {
+    } catch {
       return `${(e.priceMinor / 100).toFixed(2)} ${e.currency}`.trim();
     }
   }
@@ -1404,7 +1449,7 @@
     return h('section', { class: 'evday', id: (opts.past ? 'past-' : 'day-') + g.key, 'data-day': g.idx },
       h('h3', { class: 'evday__head' },
         h('span', { class: 'evday__date' }, `${lbl.md} ${lbl.wd}`),
-        state.city === 'BOTH' && cities.length ? h('span', { class: 'evday__city' }, cities.map((c) => CITIES[c].zh).join(' / ') + ' 当地日期') : null,
+        state.city === 'BOTH' && cities.length ? h('span', { class: 'evday__city' }, cities.map((c) => CITIES[c].zh).join(' / ') + '当地日期') : null,
         rel),
       h('div', { class: 'evlist' }, sorted.map((e) => eventItem(e, opts))));
   }
@@ -1449,7 +1494,7 @@
     });
     const total = upcoming.length;
     return h('section', { class: 'weeks', 'aria-label': '按周分布' },
-      h('p', { class: 'weeks__head' }, h('span', null, `本周起 ${n} 周 · `, h('b', null, `${total - later} 场`), later ? `，之后还有 ${later} 场` : ''), h('span', null, `${tzName(refTz)}`)),
+      h('p', { class: 'weeks__head' }, h('span', null, `本周起 ${n} 周 · `, h('b', null, `${total - later} 场`), later ? `，之后还有 ${later} 场` : ''), h('span', null, `按${CITIES[cityOfTz(refTz)].zh}日期分周`)),
       h('div', { class: 'weeks__strip' }, cols));
   }
 
@@ -1461,7 +1506,7 @@
     const upcoming = list.filter((e) => isUpcoming(e, t));
     const past = list.filter((e) => !isUpcoming(e, t));
     state.partition = partitionKey();
-    const parts = [weekStrip(upcoming)];
+    const parts = [h('h2', { class: 'vh' }, `${cityLabel(state.city)}活动`), weekStrip(upcoming)];
     if (upcoming.length) {
       parts.push(h('div', { class: 'evgroups' }, groupByDay(upcoming).map((g) => dayGroup(g))));
     } else {

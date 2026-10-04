@@ -117,7 +117,7 @@
 
   --gutter: 16px;
   --panel-w: clamp(400px, 31vw, 460px);
-  --map-h: clamp(220px, 40svh, 380px);
+  --map-h: clamp(210px, 38svh, 370px);
   --radius: 2px;
   color-scheme: light;
 }
@@ -803,6 +803,7 @@ button.week[disabled] { cursor: default; }
 .src__refs a { color: var(--ink); }
 
 .foot { margin-top: 28px; padding-top: 12px; border-top: 1px solid var(--rule); font-size: var(--fs-xs); color: var(--ink-3); line-height: 1.6; }
+.foot .link { margin-left: 6px; }
 
 /* ---------- ≥1024px: app frame ---------- */
 @media (min-width: 1024px) {
