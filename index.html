@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>双城图志 Twin City Atlas</title>
+<meta name="description" content="伦敦与福州的公共地点与活动：博物馆、课程、食物市场、公园、棋会与校园。每条资料都注明来源、核验日期与坐标精度。">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#edf0f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121a21" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='1' y='5' width='15' height='22' rx='2' fill='%23fbfbf9' stroke='%23121519' stroke-width='2'/%3E%3Crect x='4' y='18' width='9' height='2.5' fill='%23c8102e'/%3E%3Crect x='16' y='5' width='15' height='22' rx='2' fill='%230d4fa3'/%3E%3Crect x='18.5' y='7.5' width='10' height='17' rx='1' fill='none' stroke='%23fff' stroke-width='1.2'/%3E%3C/svg%3E">
+<link rel="preload" href="assets/fonts/barlow-condensed-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/ibm-plex-mono-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="assets/atlas.css">
+<script>
+  /* Apply a saved theme before first paint. Storage may be unavailable; the page works without it. */
+  (function () {
+    try {
+      var t = window.localStorage.getItem('tca.theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+    } catch (e) { /* no storage */ }
+  })();
+</script>
+<script src="vendor/leaflet/leaflet.js" defer></script>
+<script src="assets/atlas.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#panel">跳到地点列表</a>
+
+<header class="masthead">
+  <a class="brand" href="#" data-home aria-label="双城图志 Twin City Atlas，回到首页">
+    <span class="brand__zh">双城图志</span>
+    <span class="brand__en" lang="en">Twin City Atlas</span>
+  </a>
+
+  <div class="cityswitch" role="group" aria-label="选择城市">
+    <button type="button" class="cityswitch__btn" data-city="LONDON" data-set-city="LONDON" aria-pressed="false">伦敦 <span class="cityswitch__en" lang="en">London</span></button>
+    <button type="button" class="cityswitch__btn" data-city="BOTH" data-set-city="BOTH" aria-pressed="true">双城 <span class="cityswitch__en" lang="en">Both</span></button>
+    <button type="button" class="cityswitch__btn" data-city="FUZHOU" data-set-city="FUZHOU" aria-pressed="false">福州 <span class="cityswitch__en" lang="en">Fuzhou</span></button>
+  </div>
+
+  <div class="clocks" aria-label="两地当地时间">
+    <p class="clock" data-city="LONDON"><span class="clock__city">伦敦</span><time class="clock__time" data-clock="LONDON">--:--</time><span class="clock__zone" data-zone="LONDON"></span><span class="clock__day" data-day="LONDON"></span></p>
+    <p class="clock" data-city="FUZHOU"><span class="clock__city">福州</span><time class="clock__time" data-clock="FUZHOU">--:--</time><span class="clock__zone" data-zone="FUZHOU"></span><span class="clock__day" data-day="FUZHOU"></span></p>
+    <p class="clocks__diff" data-clock-diff></p>
+  </div>
+
+  <button type="button" class="btn btn--quiet themebtn" data-theme-toggle aria-label="主题：跟随系统。点击切换">
+    <span data-theme-icon></span><span class="themebtn__text" data-theme-text>跟随系统</span>
+  </button>
+</header>
+
+<main class="atlas" data-city="BOTH" data-mapcity="LONDON">
+  <section class="panel" id="panel" aria-label="地点、活动与来源" tabindex="-1">
+    <div class="tabs" role="tablist" aria-label="资料分类">
+      <button type="button" class="tab" role="tab" id="tab-places" aria-controls="view-places" aria-selected="true" data-tab="places">地点 <span class="num" data-count="places"></span></button>
+      <button type="button" class="tab" role="tab" id="tab-events" aria-controls="view-events" aria-selected="false" tabindex="-1" data-tab="events">活动 <span class="num" data-count="events"></span></button>
+      <button type="button" class="tab" role="tab" id="tab-sources" aria-controls="view-sources" aria-selected="false" tabindex="-1" data-tab="sources">来源 <span class="num" data-count="sources"></span></button>
+    </div>
+    <div class="panel__scroll" data-scroll>
+      <div class="view" id="view-places" role="tabpanel" aria-labelledby="tab-places">
+        <div class="state" data-state>
+          <p class="state__title">正在读取 content.json…</p>
+          <div class="state__line" aria-hidden="true"></div>
+          <p class="state__body">地点、活动和来源都来自同一份公开数据文件。</p>
+        </div>
+      </div>
+      <div class="view" id="view-events" role="tabpanel" aria-labelledby="tab-events" hidden></div>
+      <div class="view" id="view-sources" role="tabpanel" aria-labelledby="tab-sources" hidden></div>
+    </div>
+  </section>
+
+  <section class="mapzone" aria-label="地图">
+    <div class="mapzone__switch" role="group" aria-label="显示哪座城市的地图">
+      <button type="button" data-city="LONDON" data-map-city="LONDON" aria-pressed="true">伦敦 <span class="mono" data-clock-mini="LONDON"></span></button>
+      <button type="button" data-city="FUZHOU" data-map-city="FUZHOU" aria-pressed="false">福州 <span class="mono" data-clock-mini="FUZHOU"></span></button>
+    </div>
+    <figure class="mapframe" data-city="LONDON">
+      <div class="map" id="map-london" aria-label="伦敦地图"></div>
+      <figcaption class="mapcap">
+        <span class="plate plate--en plate--lg" aria-label="伦敦 London"><span class="plate__main" lang="en">London</span><span class="plate__rule" aria-hidden="true"></span><span class="plate__sub">伦敦 · England</span></span>
+        <span class="mapcap__time"><span class="mono" data-clock="LONDON">--:--</span><small data-cap-sub="LONDON"></small></span>
+      </figcaption>
+      <p class="mapnotice" data-tile-notice hidden role="status"></p>
+    </figure>
+    <figure class="mapframe" data-city="FUZHOU">
+      <div class="map" id="map-fuzhou" aria-label="福州地图"></div>
+      <figcaption class="mapcap">
+        <span class="plate plate--zh plate--lg" aria-label="福州 Fuzhou"><span class="plate__main">福州</span><span class="plate__sub" lang="en">Fuzhou</span></span>
+        <span class="mapcap__time"><span class="mono" data-clock="FUZHOU">--:--</span><small data-cap-sub="FUZHOU"></small></span>
+      </figcaption>
+      <p class="mapnotice" data-tile-notice hidden role="status"></p>
+    </figure>
+    <p class="surveyline" data-surveyline></p>
+  </section>
+</main>
+
+<p class="vh" aria-live="polite" data-announcer></p>
+<noscript><p style="padding:16px">本页需要 JavaScript 才能显示地点与地图。原始数据：<a href="content.json">content.json</a></p></noscript>
+</body>
+</html>
