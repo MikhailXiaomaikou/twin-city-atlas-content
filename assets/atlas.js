@@ -8,6 +8,7 @@
   /* ------------------------------------------------------------------ constants */
 
   const CONTENT_PATH = 'content.json';
+  const GUIDE_PATH = 'guide/london.json'; // web-only London guide layer (the apps read content.json only)
   const PUBLIC_CONTENT_URL = 'https://mikhailxiaomaikou.github.io/twin-city-atlas-content/content.json';
   const CLUSTER_SRC = 'vendor/leaflet.markercluster/leaflet.markercluster.js';
   const DAY = 86400000;
@@ -18,6 +19,7 @@
   const VERIFY_TZ = 'Asia/Shanghai';
   const STORE_CITY = 'tca.city';
   const STORE_THEME = 'tca.theme';
+  const STORE_PLAN = 'tca.plan';
   const TOKEN_RE = /^[A-Za-z0-9._~-]+$/;
   const EARTH_RADIUS_KM = 6371.0088;
   const CORE_KM = 5; // the first view of a city frames the places within this distance of its reference point
@@ -32,10 +34,15 @@
   const CITY_ORDER = ['LONDON', 'FUZHOU'];
 
   const CATEGORIES = {
+    LANDMARK: { glyph: '景', zh: '名胜', terms: '名胜 景点 地标 宫 教堂 塔 桥 landmark sight palace abbey cathedral tower bridge' },
     CULTURE: { glyph: '文', zh: '文化', terms: '文化 博物馆 美术馆 展览 历史 寺 culture museum gallery' },
+    VIEW: { glyph: '望', zh: '观景', terms: '观景 登高 夜景 日落 游船 缆车 view viewpoint skyline sunset' },
+    NATURE: { glyph: '园', zh: '自然', terms: '自然 公园 园 山 湖 nature park garden' },
+    FOOD: { glyph: '食', zh: '美食', terms: '美食 食物 小吃 市场 餐饮 下午茶 咖啡 food market tea coffee' },
+    NIGHT: { glyph: '夜', zh: '夜生活', terms: '夜生活 剧院 音乐剧 演出 酒馆 酒吧 爵士 喜剧 night theatre musical show pub bar' },
+    SHOP: { glyph: '购', zh: '购物', terms: '购物 百货 商店 书店 市集 shop shopping store bookshop' },
+    STROLL: { glyph: '街', zh: '街区', terms: '街区 漫步 散步 运河 街头艺术 stroll walk street canal' },
     COURSE: { glyph: '课', zh: '课程', terms: '课程 培训 学习 讲座 course class' },
-    FOOD: { glyph: '食', zh: '美食', terms: '美食 食物 小吃 市场 餐饮 food market' },
-    NATURE: { glyph: '园', zh: '自然', terms: '自然 公园 园 山 湖 nature park' },
     CHESS: { glyph: '棋', zh: '棋类', terms: '棋 国际象棋 围棋 棋会 chess go' },
     SCHOOL: { glyph: '校', zh: '校园', terms: '校园 学校 大学 school campus university' },
   };
@@ -73,12 +80,17 @@
   // Areas are ordered from Charing Cross outwards by the distance of their places; anything farther than
   // OUTER_KM that is not named here goes to 外伦敦.
   const LONDON_AREAS = [
-    { key: 'westend', en: 'West End', zh: '西区 · 考文特花园', regions: ['Trafalgar Square', 'Covent Garden', 'Strand', 'Aldwych', 'West End', 'Holborn', 'Fitzrovia', 'St James\'s', 'Soho', 'Westminster', 'Leicester Square', 'Mayfair', 'Chinatown'] },
+    { key: 'westend', en: 'West End', zh: '西区 · 考文特花园', regions: ['Trafalgar Square', 'Covent Garden', 'Strand', 'Aldwych', 'West End', 'Holborn', 'Fitzrovia', 'Soho', 'Leicester Square', 'Chinatown'] },
+    { key: 'westminster', en: 'Westminster', zh: '威斯敏斯特 · 圣詹姆斯', regions: ['Westminster', 'St James\'s', 'Whitehall', 'Victoria', 'Pimlico', 'Mayfair', 'Piccadilly', 'Green Park'] },
     { key: 'bloomsbury', en: 'Bloomsbury', zh: '布鲁姆斯伯里 · 国王十字', regions: ['Bloomsbury', 'Euston', 'St Pancras', 'King\'s Cross', 'Russell Square'] },
-    { key: 'southbank', en: 'South Bank', zh: '南岸 · 萨瑟克', regions: ['South Bank', 'Bankside', 'London Bridge', 'Waterloo', 'Bermondsey', 'Elephant & Castle', 'Southwark', 'Borough'] },
-    { key: 'kensington', en: 'South Kensington', zh: '南肯辛顿 · 海德公园', regions: ['South Kensington', 'Kensington Gardens', 'Hyde Park', 'Bayswater', 'Knightsbridge', 'Kensington'] },
-    { key: 'city', en: 'City & East', zh: '金融城 · 东区', regions: ['Aldgate', 'Spitalfields', 'Shoreditch', 'City of London', 'Clerkenwell', 'Barbican', 'Whitechapel'] },
-    { key: 'regents', en: 'Regent\'s Park', zh: '摄政公园 · 卡姆登', regions: ['Regent\'s Park', 'Camden Town', 'Camden', 'Primrose Hill', 'Marylebone'] },
+    { key: 'southbank', en: 'South Bank', zh: '南岸 · 萨瑟克', regions: ['South Bank', 'Bankside', 'London Bridge', 'Waterloo', 'Bermondsey', 'Elephant & Castle', 'Southwark', 'Borough', 'Lambeth'] },
+    { key: 'city', en: 'City', zh: '金融城 · 伦敦塔', regions: ['City of London', 'Tower Hill', 'Barbican', 'Clerkenwell', 'Smithfield', 'Temple', 'Farringdon', 'Aldgate'] },
+    { key: 'east', en: 'East End', zh: '东区 · 肖迪奇', regions: ['Spitalfields', 'Shoreditch', 'Brick Lane', 'Whitechapel', 'Bethnal Green', 'Hackney'] },
+    { key: 'kensington', en: 'Kensington', zh: '南肯辛顿 · 海德公园', regions: ['South Kensington', 'Kensington Gardens', 'Hyde Park', 'Bayswater', 'Knightsbridge', 'Kensington', 'Notting Hill', 'Holland Park'] },
+    { key: 'regents', en: 'Regent\'s Park', zh: '摄政公园 · 卡姆登', regions: ['Regent\'s Park', 'Camden Town', 'Camden', 'Primrose Hill', 'Marylebone', 'Little Venice', 'Paddington'] },
+    { key: 'chelsea', en: 'Chelsea', zh: '切尔西 · 巴特西', regions: ['Chelsea', 'Battersea'] },
+    { key: 'docklands', en: 'Greenwich', zh: '格林威治 · 道克兰', regions: ['Greenwich', 'Docklands', 'Canary Wharf', 'Rotherhithe', 'Wapping', 'Limehouse'] },
+    { key: 'north', en: 'Hampstead', zh: '汉普斯特德 · 北伦敦', regions: ['Hampstead', 'Highgate', 'Alexandra Palace'] },
   ];
   const OUTER_AREA = { key: 'outer', en: 'Outer London', zh: '外伦敦', outer: true, regions: [] };
   const LONDON_AREA_INDEX = new Map();
@@ -87,15 +99,28 @@
   // Hosts that serve many unrelated pages: never used on their own to tie a source to a place.
   const SHARED_HOST_RE = /(^|\.)(wikipedia\.org|wikidata\.org|wikimedia\.org|doogal\.co\.uk|openstreetmap\.org|blogspot\.com|wordpress\.com|github\.io|jotform\.com|eventbrite\.[a-z.]+|google\.[a-z.]+|englishchess\.org\.uk|gov\.uk|gov\.cn)$/;
   // Reference works cited for a place's coordinates (listed under 位置 › 坐标依据).
-  const COORD_HOST_RE = /(^|\.)(wikipedia\.org|wikidata\.org|doogal\.co\.uk|openstreetmap\.org)$/;
+  const COORD_HOST_RE = /(^|\.)(wikipedia\.org|wikidata\.org|doogal\.co\.uk|openstreetmap\.org|latlong\.net|mapcarta\.com|geohack\.toolforge\.org)$/;
   const GENERIC_WORDS = new Set(['london', 'the', 'park', 'parks', 'gardens', 'garden', 'royal', 'museum', 'market', 'chess', 'club', 'library', 'college', 'centre', 'center', 'church', 'school', 'street', 'house', 'gallery', 'campus', 'university', 'south', 'north', 'east', 'west', 'hall']);
-  const HOW_ZH = { postcode: '按邮编对应', coords: '按坐标对应', name: '按名称对应', region: '按区域名对应', site: '按网站对应' };
+  const HOW_ZH = { postcode: '按邮编对应', coords: '按坐标对应', name: '按名称对应', region: '按区域名对应', site: '按网站对应', guide: '攻略资料引用' };
+  const GUIDE_LICENSE = '仅整理必要事实；原始网页及图片版权归来源方。';
 
-  const TILE_URL = {
-    light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-  };
-  const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>';
+  // Basemap tiles, in order of preference. When a provider is unreachable (blocked network, outage) the map falls
+  // back to the next one; OpenStreetMap's own tiles have no dark style, so they are inverted in dark mode (CSS).
+  const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors';
+  const TILE_PROVIDERS = [
+    {
+      key: 'carto',
+      url: { light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' },
+      opts: { subdomains: 'abcd', maxZoom: 20, attribution: `${OSM_ATTRIBUTION} &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>` },
+    },
+    {
+      key: 'osm',
+      url: { light: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', dark: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png' },
+      opts: { maxNativeZoom: 19, maxZoom: 20, attribution: OSM_ATTRIBUTION },
+    },
+  ];
+  const STORE_TILES = 'tca.tiles'; // remembers a fallback for a day, so a blocked provider is not retried on every load
+  const TILE_FAIL = 4; // errors with no tile loaded before giving up on a provider
 
   /* ------------------------------------------------------------------ small utilities */
 
@@ -159,6 +184,14 @@
     auto: [['circle', { cx: 8, cy: 8, r: 5.5 }], ['path', { d: 'M8 2.5a5.5 5.5 0 0 1 0 11z', fill: 'currentColor', stroke: 'none' }]],
     fit: [['path', { d: 'M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10' }], ['circle', { cx: 8, cy: 8, r: 1.6 }]],
     warn: [['path', { d: 'M8 2.2 14.2 13H1.8z' }], ['path', { d: 'M8 6.5v3M8 11.3v.2' }]],
+    locate: [['circle', { cx: 8, cy: 8, r: 4.2 }], ['circle', { cx: 8, cy: 8, r: 1.3, fill: 'currentColor', stroke: 'none' }], ['path', { d: 'M8 1.5v2.3M8 12.2v2.3M1.5 8h2.3M12.2 8h2.3' }]],
+    pin: [['path', { d: 'M8 14.2s-4.3-4.4-4.3-7.6a4.3 4.3 0 0 1 8.6 0c0 3.2-4.3 7.6-4.3 7.6z' }], ['circle', { cx: 8, cy: 6.5, r: 1.5 }]],
+    star: [['path', { d: 'M8 1.9l1.8 3.8 4.1.5-3 2.9.8 4.1L8 11.2l-3.7 2 .8-4.1-3-2.9 4.1-.5z' }]],
+    'star-on': [['path', { d: 'M8 1.9l1.8 3.8 4.1.5-3 2.9.8 4.1L8 11.2l-3.7 2 .8-4.1-3-2.9 4.1-.5z', fill: 'currentColor' }]],
+    swap: [['path', { d: 'M3 5.5h9.5M10 3l2.5 2.5L10 8M13 10.5H3.5M6 8l-2.5 2.5L6 13' }]],
+    walk: [['circle', { cx: 8.6, cy: 2.8, r: 1.3 }], ['path', { d: 'M7.6 5.5 6.4 9.2l2.3 1.6.7 3.6M7.6 5.5l2.2 1.6 1.9.4M6.4 9.2l-1.6 4.3M7.6 5.5 5.3 6.8 4.6 8.8' }]],
+    tube: [['circle', { cx: 8, cy: 8, r: 5 }], ['path', { d: 'M1.8 8h12.4' }]],
+    route: [['circle', { cx: 3.5, cy: 12.5, r: 1.5 }], ['circle', { cx: 12.5, cy: 3.5, r: 1.5 }], ['path', { d: 'M5 12.5h4.5a2.5 2.5 0 0 0 0-5h-3a2.5 2.5 0 0 1 0-5H11' }]],
   };
   function icon(name) {
     const NS = 'http://www.w3.org/2000/svg';
@@ -681,7 +714,7 @@
    * 6 the site is used by exactly one place. The first rule that finds something wins. `candidates` also holds
    * hidden places: a source that only matches those is dropped.
    */
-  function linkSources(sources, places, events, series, hidden) {
+  function linkSources(sources, places, events, series, hidden, allById) {
     const byId = new Map(places.map((p) => [p.id, p]));
     const all = places.concat(hidden);
     const refs = new Map();
@@ -716,6 +749,15 @@
 
     const out = [];
     for (const s of sources) {
+      if (s.force) {
+        // guide records name their place: no guessing
+        s.placeIds = s.force.filter((id) => allById.has(id));
+        if (!s.placeIds.length) continue;
+        s.how = s.placeIds.some((id) => urlKey(allById.get(id).sourceUrl) === s.key) ? 'url' : 'guide';
+        s.refs = { places: [], events: [], series: [] };
+        out.push(s);
+        continue;
+      }
       const exact = refs.get(s.key);
       let ids = [];
       let how = '';
@@ -763,14 +805,93 @@
     return out;
   }
 
-  function normalize(json) {
+  /* ------------------------------------------------------------------ guide layer (guide/london.json, web only) */
+
+  /** A verification day 'YYYY-MM-DD' → the stamp the content data uses for dates (midnight China Standard Time). */
+  function dayStamp(key) {
+    const m = String(key || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) - 8 * 3600e3 : null;
+  }
+  /** Validate the guide file: places with an id, coordinates and a known shape; drop ones whose dates have passed. */
+  function readGuide(guide, json) {
+    const out = { ok: false, error: null, places: [], overlays: {}, routes: [], tips: [], updated: '', ended: 0, held: 0 };
+    if (!guide) return out;
+    if (guide instanceof Error) { out.error = guide; return out; }
+    if (typeof guide !== 'object' || !Array.isArray(guide.places)) { out.error = new Error('shape'); return out; }
+    const contentIds = new Set((Array.isArray(json.places) ? json.places : []).map((r) => r && str(r.id)));
+    const today = window.TCAPlanner ? window.TCAPlanner.londonParts(now()).key : '';
+    const seen = new Set();
+    for (const g of guide.places) {
+      if (!g || typeof g !== 'object') continue;
+      const id = str(g.id);
+      if (!id || !TOKEN_RE.test(id) || seen.has(id) || contentIds.has(id)) continue;
+      if (num(g.lat) == null || num(g.lng) == null) continue;
+      if (g.dates && str(g.dates.to) && today && str(g.dates.to) < today) { out.ended += 1; continue; }
+      if (str(g.hold)) { out.held += 1; continue; } // kept for later (e.g. dates not announced yet), not shown
+      seen.add(id);
+      out.places.push(g);
+    }
+    if (guide.overlays && typeof guide.overlays === 'object') out.overlays = guide.overlays;
+    if (Array.isArray(guide.routes)) out.routes = guide.routes.filter((r) => r && str(r.id) && Array.isArray(r.stops));
+    if (Array.isArray(guide.tips)) out.tips = guide.tips.filter((t) => t && str(t.title));
+    out.updated = str(guide.updated);
+    out.ok = true;
+    return out;
+  }
+  function guideRaw(g) {
+    return {
+      id: g.id, name: g.name, category: g.category, latitude: g.lat, longitude: g.lng, address: g.address,
+      description: g.summary, sourceUrl: g.sourceUrl, verifiedAt: dayStamp(g.verified), region: g.region,
+      arrivalRadiusMeters: num(g.radius) || 60, openingInfo: '', city: 'LONDON', sourceVersion: 1, guide: true,
+    };
+  }
+  /** Give guide places and content places with an overlay their planning record (p.g) and planner node (p.node). */
+  function attachGuide(places, gd) {
+    const byId = new Map(gd.places.map((g) => [g.id, g]));
+    const P = window.TCAPlanner;
+    for (const p of places) {
+      const g = byId.get(p.id) || (p.city === 'LONDON' ? gd.overlays[p.id] : null);
+      if (!g || typeof g !== 'object') continue;
+      p.g = g;
+      p.guide = byId.has(p.id);
+      p.zh = str(g.zh);
+      p.unverified = g.unverified === true;
+      p.vary = g.hoursVary === true;
+      p.calendarUrl = safeUrl(g.calendarUrl) ? str(g.calendarUrl) : '';
+      if (P && p.hasCoords) {
+        p.node = P.compilePlace({ id: p.id, name: p.name, category: p.category, lat: p.lat, lng: p.lng }, g);
+        p.node.place = p;
+      }
+    }
+  }
+  /** Source records for guide places: the main page plus the extra pages each record lists. */
+  function guideSources(list, places) {
+    const known = new Set(places.map((p) => p.id));
+    const out = [];
+    for (const g of list) {
+      if (!known.has(g.id)) continue;
+      const at = dayStamp(g.verified);
+      const until = g.dates && str(g.dates.to) ? dayStamp(g.dates.to) + 32 * 3600e3 : null;
+      if (str(g.sourceUrl)) {
+        out.push({ id: `guide-${g.id}`, url: str(g.sourceUrl), key: urlKey(g.sourceUrl), verifiedAt: at, validUntil: until, status: str(g.verifyNote), license: GUIDE_LICENSE, force: [g.id] });
+      }
+      (Array.isArray(g.sources) ? g.sources : []).forEach((u, i) => {
+        if (!str(u) || urlKey(u) === urlKey(g.sourceUrl)) return;
+        out.push({ id: `guide-${g.id}-${i + 1}`, url: str(u), key: urlKey(u), verifiedAt: at, validUntil: null, status: COORD_HOST_RE.test(hostOf(u)) ? '坐标参考' : '辅助参考：交叉核对或补充信息', license: GUIDE_LICENSE, force: [g.id] });
+      });
+    }
+    return out;
+  }
+
+  function normalize(json, guide) {
     if (!json || typeof json !== 'object' || Array.isArray(json)) throw new Error('shape');
     const list = (k) => (Array.isArray(json[k]) ? json[k] : []);
+    const gd = readGuide(guide, json);
     const hiddenPlaceIds = new Set();
     const hiddenPlaces = [];
     const places = [];
     const seen = new Set();
-    for (const raw of list('places')) {
+    for (const raw of list('places').concat(gd.places.map(guideRaw))) {
       if (raw && typeof raw === 'object' && (raw.hidden === true || raw.isPrivate === true)) {
         hiddenPlaceIds.add(str(raw.id));
         const lat = num(raw.latitude);
@@ -781,10 +902,12 @@
       const p = normalizePlace(raw);
       if (p && !seen.has(p.id)) { seen.add(p.id); places.push(p); }
     }
+    attachGuide(places, gd);
     const groups = assignGroups(places);
     for (const p of places) {
       const g = p.group;
-      p.search = fold([p.name, p.address, p.region, p.postcode, g.plate.main, g.plate.sub, p.plate.main, p.plate.sub, p.description, p.openingInfo, p.cat.zh, p.cat.terms, p.category, CITIES[p.city].zh, CITIES[p.city].en].join(' '));
+      const x = p.g || {};
+      p.search = fold([p.name, p.zh, p.address, p.region, p.postcode, g.plate.main, g.plate.sub, p.plate.main, p.plate.sub, p.description, p.openingInfo, p.guide ? '' : x.summary, p.cat.zh, p.cat.terms, p.category, CITIES[p.city].zh, CITIES[p.city].en].join(' '));
     }
     places.sort((a, b) => cmp(a.name, b.name) || cmp(a.id, b.id));
     const placeById = new Map(places.map((p) => [p.id, p]));
@@ -860,10 +983,12 @@
         license: str(raw.license),
       });
     }
+    rawSources.push(...guideSources(gd.places, places));
     const hiddenKeys = new Set();
     for (const raw of list('places')) if (raw && hiddenPlaceIds.has(str(raw.id)) && str(raw.sourceUrl)) hiddenKeys.add(urlKey(raw.sourceUrl));
     for (const raw of list('events').concat(list('series'))) if (raw && hiddenPlaceIds.has(str(raw.placeId)) && str(raw.sourceUrl)) hiddenKeys.add(urlKey(raw.sourceUrl));
-    const linked = linkSources(rawSources, places, events, Array.from(seriesById.values()), hiddenPlaces);
+    // guide places stay out of the URL/site heuristics, so content.json sources link exactly as before
+    const linked = linkSources(rawSources, places.filter((p) => !p.guide), events, Array.from(seriesById.values()), hiddenPlaces, placeById);
     const sources = linked.filter((s) => !(hiddenKeys.has(s.key) && !s.placeIds.length && !s.refs.events.length && !s.refs.series.length));
 
     // licence texts → footnote numbers, most common first
@@ -905,6 +1030,8 @@
     return {
       meta: { format: str(json.format), version: str(json.version), kind: str(json.kind), coordinateSystem: str(json.coordinateSystem) },
       places, placeById, groups, events, eventsByPlace, seriesById, sources, sourcesByPlace, licenses,
+      nodes: places.filter((p) => p.node).map((p) => p.node),
+      guide: { ok: gd.ok, error: gd.error, count: places.filter((p) => p.guide).length, overlays: places.filter((p) => p.g && !p.guide).length, updated: gd.updated, routes: gd.routes, tips: gd.tips, ended: gd.ended, held: gd.held },
     };
   }
 
@@ -942,13 +1069,22 @@
     filterSig: '*',
     filterIds: null,
     hotId: null,
+    plan: null, // filled at boot (stored preferences)
+    planDate: null,
+    planRes: null,
+    excluded: new Set(),
+    startKind: 'preset',
+    startPoint: null,
+    geo: { status: 'idle' },
+    picking: false,
+    fitRoute: false,
   };
 
   const els = {
     atlas: $('.atlas'),
     panel: $('#panel'),
     scroll: $('[data-scroll]'),
-    views: { places: $('#view-places'), events: $('#view-events'), sources: $('#view-sources') },
+    views: { places: $('#view-places'), guide: $('#view-guide'), events: $('#view-events'), sources: $('#view-sources') },
     tabs: $$('.tab'),
     tablist: $('.tabs'),
     announcer: $('[data-announcer]'),
@@ -992,6 +1128,7 @@
     if (state.tab === 'places' && state.placeId) return state.placeId;
     if (state.tab === 'events') return 'events';
     if (state.tab === 'sources') return 'sources';
+    if (state.tab === 'guide') return 'guide';
     return state.city === 'BOTH' ? 'both' : CITIES[state.city].token;
   }
   function writeHash(opts = {}) {
@@ -1026,7 +1163,8 @@
       setTab('places', opts);
       return true;
     }
-    if (low === 'events' || low === 'sources') {
+    if (low === 'events' || low === 'sources' || low === 'guide') {
+      if (state.placeId) { state.placeId = null; selectOnMap(null); }
       setTab(low, opts);
       return true;
     }
@@ -1084,10 +1222,12 @@
     }
     for (const [k, v] of Object.entries(els.views)) v.hidden = k !== tab;
     if (changed && !mqDesktop.matches && !state.mapsOff) {
-      // Phones: the map earns its space on 地点; 活动 and 来源 start with it folded to a strip.
+      // Phones: the map earns its space on 地点 and 攻略 (the route); 活动 and 来源 start with it folded to a strip.
       state.mapPinned = false;
-      setMapMin(tab !== 'places' && !state.placeId, { auto: true });
+      setMapMin(tab !== 'places' && tab !== 'guide' && !state.placeId, { auto: true });
     }
+    if (tab === 'guide' && state.city === 'BOTH') setMapCity('LONDON');
+    if (changed && tab !== 'guide' && state.picking) togglePicking();
     if (opts.render !== false) {
       render();
       if (changed) scrollPanelTop();
@@ -1238,13 +1378,10 @@
           layer: null, solo: L.layerGroup().addTo(map), ghost: L.layerGroup().addTo(map),
           markers: new Map(), where: new Map(), muted: new Set(),
           ring: null, selected: null, fitted: false, pendingFocus: null,
-          tiles: null, theme: effectiveTheme(), tileErr: 0, tileOk: 0,
+          tiles: null, theme: effectiveTheme(), tileErr: 0, tileOk: 0, provider: startProvider(),
           hotCluster: null, roving: null, refocus: null, uiRaf: 0,
         };
-        m.tiles = L.tileLayer(TILE_URL[m.theme], { subdomains: 'abcd', maxZoom: 20, attribution: TILE_ATTRIBUTION })
-          .on('tileerror', () => { m.tileErr += 1; updateTileNotice(m); })
-          .on('tileload', () => { m.tileOk += 1; updateTileNotice(m); })
-          .addTo(map);
+        setTileLayer(m, m.provider);
         el.setAttribute('role', 'region');
         el.setAttribute('aria-roledescription', '地图');
         el.setAttribute('aria-label', `${CITIES[key].zh}地图：方向键平移，加减号缩放。点位：Tab 进入后用方向键在点位之间移动，Enter 打开`);
@@ -1274,9 +1411,45 @@
     for (const k of Object.keys(maps)) delete maps[k];
   }
 
+  /** The provider to start with: the remembered fallback (less than a day old), else the first. */
+  function startProvider() {
+    try {
+      const v = JSON.parse(store.get(STORE_TILES) || 'null');
+      const i = v ? TILE_PROVIDERS.findIndex((p) => p.key === v.key) : -1;
+      if (i > 0 && Date.now() - v.at < DAY) return i;
+    } catch { /* ignore */ }
+    return 0;
+  }
+  function setTileLayer(m, i) {
+    const L = window.L;
+    const prov = TILE_PROVIDERS[i];
+    if (m.tiles) m.map.removeLayer(m.tiles);
+    m.provider = i;
+    m.tileErr = 0;
+    m.tileOk = 0;
+    m.frame.dataset.tiles = prov.key;
+    const layer = L.tileLayer(prov.url[m.theme], Object.assign({ className: 'tiles-' + prov.key }, prov.opts));
+    m.tiles = layer;
+    layer
+      .on('tileerror', () => {
+        if (m.tiles !== layer) return; // late events from a layer already replaced
+        m.tileErr += 1;
+        if (m.tileOk === 0 && m.tileErr >= TILE_FAIL && m.provider < TILE_PROVIDERS.length - 1) {
+          setTileLayer(m, m.provider + 1);
+          store.set(STORE_TILES, JSON.stringify({ key: TILE_PROVIDERS[m.provider].key, at: Date.now() }));
+          return;
+        }
+        updateTileNotice(m);
+      })
+      .on('tileload', () => { if (m.tiles !== layer) return; m.tileOk += 1; updateTileNotice(m); })
+      .addTo(m.map);
+    layer.bringToBack();
+  }
+
   function updateTileNotice(m) {
     const note = $('[data-tile-notice]', m.frame);
-    const failing = m.tileErr >= 2 && m.tileOk === 0;
+    // only once every provider has been tried
+    const failing = m.provider === TILE_PROVIDERS.length - 1 && m.tileErr >= 2 && m.tileOk === 0;
     if (failing && note.hidden) {
       note.replaceChildren(icon('warn'), h('span', null, '底图暂时无法加载，点位与列表仍可使用。'));
       note.hidden = false;
@@ -1293,7 +1466,7 @@
       m.theme = theme;
       m.tileErr = 0;
       m.tileOk = 0;
-      m.tiles.setUrl(TILE_URL[theme]);
+      m.tiles.setUrl(TILE_PROVIDERS[m.provider].url[theme]);
     }
   }
 
@@ -1930,6 +2103,8 @@
       const u = untilText(ts, Number(el.dataset.end), el.dataset.tz, t);
       el.textContent = u.text;
       el.classList.toggle('is-live', !!u.live);
+    } else if (kind === 'open') {
+      paintLive(el);
     } else if (kind === 'deadline') {
       const d = deadlineText(ts, el.dataset.tz, t);
       el.textContent = d.text;
@@ -2194,9 +2369,13 @@
     const d = state.data;
     const latest = d.places.map((p) => p.verifiedAt).filter((x) => x != null).reduce((m, x) => Math.max(m, x), 0);
     const toSources = h('a', { class: 'link', href: '#sources', 'data-route': 'sources' }, '查看全部来源');
+    const unv = d.places.filter((p) => p.unverified).length;
+    const vary = d.places.filter((p) => p.vary).length;
+    const extra = [unv ? `${unv} 处标“待核实”` : '', vary ? `${vary} 处时间每天不同（附官网日历）` : '', d.guide.held ? `另有 ${d.guide.held} 处等官方公布后再显示` : ''].filter(Boolean);
     return h('p', { class: 'foot' },
       `资料来自公开数据文件 content.json（${d.meta.format || '格式未注明'} v${d.meta.version || '?'}，坐标 ${d.meta.coordinateSystem || '未注明'}）`,
       latest ? `，地点最近核验于 ${ymd(latest, VERIFY_TZ)}。` : '。',
+      d.guide.count ? `伦敦另有攻略层 ${GUIDE_PATH} 的 ${d.guide.count} 处（仅网页版）${extra.length ? `；${extra.join('，')}` : ''}。` : '',
       '每条都附来源链接；出发前请以来源为准。', toSources);
   }
 
@@ -2215,24 +2394,25 @@
     const meta = [p.cat.zh, p.region || '未标注区域'];
     if (p.postcode) meta.push(p.postcode);
     if (p.group && p.group.outer && p.km != null) meta.push(`${fmtKm(p.km)} km`);
-    let excerpt = p.excerpt;
+    let excerpt = p.excerpt || (p.g && p.g.summary) || '';
     let matched = false;
     if (qs && qs.length) {
       // Show why a row matched when the match is not in its visible name or meta line.
       const visible = fold(`${p.name} ${meta.join(' ')} ${p.cat.terms} ${p.category}`);
       if (!qs.every((t) => visible.includes(t))) {
-        for (const field of [p.openingInfo, p.description, p.address, p.group.plate.sub]) {
+        for (const field of [p.openingInfo, p.description, p.zh, p.g && p.g.summary, p.address, p.group.plate.sub]) {
           const snip = field && kwic(field, qs);
           if (snip) { excerpt = snip; matched = true; break; }
         }
       }
     }
     const fresh = p.verifiedAt != null && (isStale(p.verifiedAt) || ageDays(p.verifiedAt) >= AGING_DAYS) ? freshness(p.verifiedAt, 'row__fresh') : null;
+    const live = p.node && p.node.plan && TP() ? liveEl(p, 'row__live') : null;
     const a = h('a', { class: 'row', href: '#' + p.id, 'data-id': p.id, 'data-city': p.city, 'data-route': p.id, 'data-fk': 'row:' + p.id },
       glyph(p.cat),
-      h('span', { class: 'row__name' }, highlight(p.name, qs)),
+      h('span', { class: 'row__name' }, highlight(p.name, qs), p.zh ? h('span', { class: 'row__zh' }, highlight(p.zh, qs)) : null, unverifiedBadge(p)),
       fresh,
-      h('span', { class: 'row__meta' }, highlight(meta.join(' · '), qs)),
+      h('span', { class: 'row__meta' }, live, live ? h('span', { class: 'sep', 'aria-hidden': 'true' }, ' · ') : null, highlight(meta.join(' · '), qs)),
       excerpt ? h('span', { class: 'row__excerpt' + (matched ? ' is-match' : '') }, highlight(excerpt, qs)) : null);
     a.addEventListener('pointerenter', () => setHot(p.id, true));
     a.addEventListener('pointerleave', () => setHot(p.id, false));
@@ -2348,7 +2528,7 @@
   function renderDetail(p) {
     const view = els.views.places;
     const d = state.data;
-    const backTo = { places: '返回地点列表', events: '返回活动', sources: '返回来源' }[state.returnTab] || '返回地点列表';
+    const backTo = { places: '返回地点列表', guide: '返回攻略', events: '返回活动', sources: '返回来源' }[state.returnTab] || '返回地点列表';
     const back = h('button', { type: 'button', class: 'btn btn--quiet detail__back' }, icon('back'), backTo);
     back.addEventListener('click', () => closePlace());
 
@@ -2356,15 +2536,18 @@
     const head = h('header', { class: 'detail__head' },
       h('p', { class: 'detail__kicker' }, glyph(p.cat, true), h('span', null, p.cat.zh), h('span', { class: 'sep', 'aria-hidden': 'true' }, '/'), h('span', null, `${CITIES[p.city].zh} ${CITIES[p.city].en}`),
         p.group && p.group.area ? [h('span', { class: 'sep', 'aria-hidden': 'true' }, '/'), h('span', null, p.group.area.zh)] : null),
-      h('h2', { class: 'detail__name', tabindex: '-1' }, p.name),
+      h('h2', { class: 'detail__name', tabindex: '-1' }, p.name, p.zh ? h('span', { class: 'detail__zh' }, p.zh) : null),
       h('div', null, plateEl(p.plate)),
       h('div', { class: 'detail__address' }, addrText, p.address ? copyButton(() => p.address, '复制地址', addrText) : null));
 
     const parts = [back, head];
     if (p.description) parts.push(h('p', { class: 'detail__desc' }, richText(p.description)));
-    parts.push(h('section', { class: 'openinfo', 'data-city': p.city, 'aria-labelledby': 'open-label' },
-      h('h3', { class: 'label', id: 'open-label' }, '开放与安排'),
-      openingBlocks(p.openingInfo, p.city)));
+    if (!p.guide) {
+      parts.push(h('section', { class: 'openinfo', 'data-city': p.city, 'aria-labelledby': 'open-label' },
+        h('h3', { class: 'label', id: 'open-label' }, '开放与安排'),
+        openingBlocks(p.openingInfo, p.city)));
+    }
+    if (p.g) parts.push(guideBlock(p));
 
     // events here (series collapsed into one row each)
     const evs = d.eventsByPlace.get(p.id) || [];
@@ -2989,6 +3172,7 @@
     const desc = [
       `当地时间：${md(e.start, e.tz)} ${timeRange(e, e.tz)}（${e.tz}）`,
       `费用：${priceText(e)}`,
+      e.note || null,
       e.deadline != null ? `报名截止：${md(e.deadline, e.tz)} ${hm(e.deadline, e.tz)}（${tzName(e.tz)}）` : null,
       e.series ? `系列：${e.series.title}${e.series.organizer ? '（主办 ' + e.series.organizer + '）' : ''}` : null,
       url ? `来源：${url.href}` : null,
@@ -3091,6 +3275,8 @@
           h('span', { class: 'label' }, '应用内容地址（电脑版与安卓版从这里更新）'),
           h('div', { class: 'urlbox' }, urlInput, copyButton(() => PUBLIC_CONTENT_URL, '复制应用内容地址', urlInput))),
         h('p', null, h('a', { class: 'link ext', href: CONTENT_PATH, target: '_blank', rel: 'noopener noreferrer' }, h('span', null, '打开原始 content.json'), icon('ext'), h('span', { class: 'vh' }, '（在新窗口打开）'))),
+        h('p', { class: 'note' }, `伦敦攻略层 ${GUIDE_PATH}：${d.guide.ok ? `${d.guide.count} 处新增地点、${d.guide.overlays} 处已有地点的游玩补充` : '未能读取'}。它只供网页版的攻略与规划使用，不在应用内容地址里，电脑版与安卓版的同步格式不受影响。`,
+          ' ', h('a', { class: 'link ext', href: GUIDE_PATH, target: '_blank', rel: 'noopener noreferrer' }, h('span', null, '打开 london.json'), icon('ext'))),
         h('dl', { class: 'metagrid' }, meta.map(([k, v]) => h('div', null, h('dt', { lang: 'en' }, k), h('dd', null, v || '未注明')))),
         h('table', { class: 'counts' },
           h('caption', { class: 'vh' }, '各城市条目数'),
@@ -3201,11 +3387,1070 @@
       used ? h('div', { class: 'src__usedbox' }, used) : null);
   }
 
+  /* ------------------------------------------------------------------ guide: time, status, formatting */
+
+  const TP = () => window.TCAPlanner || null;
+  const sunCache = new Map();
+  function sunFor(date) {
+    let s = sunCache.get(date.key);
+    if (!s) { s = TP().sunLocal(date); sunCache.set(date.key, s); }
+    return s;
+  }
+  const londonNow = () => TP().londonParts(now());
+  /** Minutes after a local midnight → "09:30"; 24:00 stays 24:00, later times wrap (25:00 → 01:00). */
+  function clock(min) {
+    const m = Math.round(min);
+    if (m === 1440) return '24:00';
+    return `${pad(Math.floor(m / 60) % 24)}:${pad(((m % 60) + 60) % 60)}`;
+  }
+  const clockNext = (min) => (Math.round(min) > 1440 ? '次日 ' : '') + clock(min);
+  function durText(min) {
+    const m = Math.max(0, Math.round(min));
+    if (m < 60) return `${m} 分钟`;
+    const hh = Math.floor(m / 60);
+    const r = m % 60;
+    return r ? `${hh} 小时 ${r} 分` : `${hh} 小时`;
+  }
+  function pence(p) {
+    if (p == null) return '费用不定';
+    if (p === 0) return '免费';
+    return `£${p % 100 ? (p / 100).toFixed(2) : p / 100}`;
+  }
+  const INDOOR_ZH = { in: '室内', out: '户外', mixed: '室内外都有' };
+  const BEST_ZH = { morning: '上午', midday: '中午', afternoon: '下午', sunset: '日落前后', evening: '傍晚', night: '夜里' };
+  const DOW_ZH = ['一', '二', '三', '四', '五', '六', '日'];
+  const PACE_ZH = { relaxed: '悠闲', normal: '适中', packed: '紧凑' };
+  const dateZh = (dt) => `${dt.mo}月${dt.d}日 周${DOW_ZH[dt.dow]}`;
+  function ivText(iv) {
+    if (iv == null) return '时间未知';
+    if (!iv.length) return '不开放';
+    return iv.map(([o, c]) => (o === 0 && c >= 1440 ? '全天' : `${clock(o)}–${clockNext(c)}`)).join('，');
+  }
+  const placeLabel = (n) => (n.zh ? `${n.zh} ${n.name}` : n.name);
+
+  /** Open / closed right now for a planner node → { text, cls }. */
+  function liveStatus(node, t = now()) {
+    const P = TP();
+    const nowL = P.londonParts(t);
+    if (node.dates && nowL.key < node.dates.from) {
+      const f = P.parseDateKey(node.dates.from);
+      return { text: `${f.mo}月${f.d}日开始`, cls: 'is-later' };
+    }
+    if (nowL.md === '12-25' && !P.xmasOk(node) && !node.closed.has('12-25')) return { text: '圣诞节多数关门 · 以官网为准', cls: 'is-closed' };
+    const st = P.statusAt(node, nowL, sunFor(nowL), sunFor(P.addDays(nowL, -1)));
+    if (node.vary) { // the hours are a cautious typical window: never claim more than that
+      if (st.state === 'open') return { text: '一般这时开着 · 以官网日历为准', cls: 'is-open' };
+      if (st.state === 'slots' && st.nextSlot != null) return { text: `今天一般 ${clock(st.nextSlot)} 开场 · 以官网为准`, cls: 'is-open' };
+      if (st.state === 'closed' && st.opensAt != null) return { text: `一般 ${clock(st.opensAt)} 开门 · 以官网日历为准`, cls: 'is-closed' };
+      return { text: '时间每天不同 · 查官网日历', cls: 'is-unknown' };
+    }
+    if (st.state === 'open') {
+      if (st.always) return { text: '随时可去', cls: 'is-open' };
+      const pastEntry = st.lastEntryAt != null && st.lastEntryAt <= nowL.min;
+      if (pastEntry) return { text: `已停止入场 · ${clock(st.closesAt)} 关`, cls: 'is-closing' };
+      return { text: `开放中 · 至 ${clock(st.closesAt)}`, cls: st.left <= 60 ? 'is-closing' : 'is-open' };
+    }
+    if (st.state === 'closed') return { text: st.opensAt != null ? `${clock(st.opensAt)} 开门` : st.closedToday ? '今天不开放' : '今天已关门', cls: 'is-closed' };
+    if (st.state === 'slots') {
+      if (st.nextSlot != null) return { text: `今天 ${clock(st.nextSlot)} 开场`, cls: 'is-open' };
+      return P.slotsOn(node, nowL).length ? { text: '今天的场次已开始', cls: 'is-closed' } : { text: '今天没有场次', cls: 'is-closed' };
+    }
+    return { text: '开放时间未知', cls: 'is-unknown' };
+  }
+  function liveEl(p, extra) {
+    const el = h('span', { class: 'live', 'data-rel': 'open', 'data-id': p.id, 'data-base': 'live' + (extra ? ' ' + extra : '') });
+    paintRel(el);
+    return el;
+  }
+  function paintLive(el) {
+    const p = state.data && state.data.placeById.get(el.dataset.id);
+    if (!p || !p.node || !TP()) { el.textContent = ''; return; }
+    const s = liveStatus(p.node);
+    el.textContent = s.text;
+    el.className = `${el.dataset.base || 'live'} ${s.cls}`;
+  }
+  function unverifiedBadge(p) {
+    if (!p) return null;
+    if (p.unverified) return h('span', { class: 'badge badge--soft', title: '开放时间各来源说法不一或尚未确认（原因见地点页的核验说明）；出发前请查官网' }, '待核实');
+    if (p.vary) return h('span', { class: 'badge badge--soft', title: '开放时间每天不同：规划按保守时段估算；出发前请在官网日历查当天时间' }, '时间每天不同');
+    return null;
+  }
+
+  /* ------------------------------------------------------------------ guide: plan state */
+
+  const START_PRESETS = [
+    { key: 'charing-cross', zh: 'Charing Cross · 特拉法加广场', lat: 51.5080, lng: -0.1247 },
+    { key: 'covent-garden', zh: 'Covent Garden 站', lat: 51.5129, lng: -0.1243 },
+    { key: 'piccadilly', zh: 'Piccadilly Circus 站', lat: 51.5098, lng: -0.1342 },
+    { key: 'oxford-circus', zh: 'Oxford Circus 站', lat: 51.5152, lng: -0.1415 },
+    { key: 'westminster', zh: 'Westminster 站', lat: 51.5010, lng: -0.1248 },
+    { key: 'victoria', zh: 'Victoria 站', lat: 51.4965, lng: -0.1441 },
+    { key: 'waterloo', zh: 'Waterloo 站', lat: 51.5031, lng: -0.1132 },
+    { key: 'london-bridge', zh: 'London Bridge 站', lat: 51.5049, lng: -0.0863 },
+    { key: 'tower-hill', zh: 'Tower Hill 站', lat: 51.5098, lng: -0.0766 },
+    { key: 'liverpool-street', zh: 'Liverpool Street 站', lat: 51.5178, lng: -0.0817 },
+    { key: 'kings-cross', zh: 'King’s Cross St Pancras 站', lat: 51.5306, lng: -0.1239 },
+    { key: 'russell-square', zh: 'Russell Square 站', lat: 51.5231, lng: -0.1244 },
+    { key: 'paddington', zh: 'Paddington 站', lat: 51.5154, lng: -0.1755 },
+    { key: 'south-kensington', zh: 'South Kensington 站', lat: 51.4941, lng: -0.1738 },
+    { key: 'canary-wharf', zh: 'Canary Wharf 站', lat: 51.5035, lng: -0.0187 },
+    { key: 'greenwich', zh: 'Cutty Sark（格林威治）DLR 站', lat: 51.4826, lng: -0.0096 },
+  ];
+  const PLAN_INTERESTS = ['LANDMARK', 'CULTURE', 'VIEW', 'NATURE', 'FOOD', 'NIGHT', 'SHOP', 'STROLL'];
+  const TBAR_MIN = 360; // 06:00
+  const TBAR_MAX = 1560; // 次日 02:00
+  const TBAR_STEP = 15;
+  const MIN_SPAN = 60;
+
+  function defaultPlan() {
+    return { window: [600, 1080], interests: [], pace: 'normal', freeOnly: false, rainy: false, kids: false, meals: true, events: true, back: false, pins: [], start: 'charing-cross' };
+  }
+  function loadPlan() {
+    const p = defaultPlan();
+    let v = null;
+    try { v = JSON.parse(store.get(STORE_PLAN) || 'null'); } catch { v = null; }
+    if (!v || typeof v !== 'object') return p;
+    const w = v.window;
+    if (Array.isArray(w) && w.length === 2 && w.every((x) => Number.isFinite(x)) && w[0] >= TBAR_MIN && w[1] <= TBAR_MAX && w[1] - w[0] >= MIN_SPAN) p.window = [w[0], w[1]];
+    if (Array.isArray(v.interests)) p.interests = v.interests.filter((k) => PLAN_INTERESTS.includes(k));
+    if (PACE_ZH[v.pace]) p.pace = v.pace;
+    for (const k of ['freeOnly', 'rainy', 'kids', 'meals', 'events', 'back']) if (typeof v[k] === 'boolean') p[k] = v[k];
+    if (Array.isArray(v.pins)) p.pins = v.pins.filter((x) => typeof x === 'string' && TOKEN_RE.test(x)).slice(0, 30);
+    if (START_PRESETS.some((x) => x.key === v.start)) p.start = v.start;
+    return p;
+  }
+  function savePlan() {
+    const p = state.plan;
+    store.set(STORE_PLAN, JSON.stringify({ window: p.window, interests: p.interests, pace: p.pace, freeOnly: p.freeOnly, rainy: p.rainy, kids: p.kids, meals: p.meals, events: p.events, back: p.back, pins: p.pins, start: p.start }));
+  }
+
+  function startPoint() {
+    const k = state.startKind;
+    if (k === 'geo' && state.geo.status === 'ok') return { lat: state.geo.lat, lng: state.geo.lng, label: '你的位置', kind: 'geo' };
+    if ((k === 'pick' || k === 'place') && state.startPoint) return state.startPoint;
+    const pr = START_PRESETS.find((x) => x.key === state.plan.start) || START_PRESETS[0];
+    return { lat: pr.lat, lng: pr.lng, label: pr.zh, kind: 'preset' };
+  }
+  /** The day being planned: the one picked, else today — or tomorrow once today's window is (nearly) over. */
+  function planDate() {
+    const P = TP();
+    const today = londonNow();
+    if (state.planDate) {
+      const dt = P.parseDateKey(state.planDate);
+      if (dt && dt.key >= today.key) return dt;
+      state.planDate = null;
+    }
+    const d0 = P.dateInfo(today.y, today.mo, today.d, 0);
+    return state.plan.window[1] - Math.max(state.plan.window[0], today.min) < 60 ? Object.assign(P.addDays(d0, 1), { auto: true }) : d0;
+  }
+  function planWeights(withEvents = true) {
+    const sel = new Set(state.plan.interests);
+    const w = {};
+    for (const k of CATEGORY_ORDER) w[k] = PLAN_INTERESTS.includes(k) ? (sel.size ? (sel.has(k) ? 1.6 : 0.35) : 1) : 0;
+    if (state.plan.meals && w.FOOD < 1) w.FOOD = 1; // meals need restaurants even when food is not an interest
+    w.EVENT = withEvents && state.plan.events ? 1.3 : 0;
+    return w;
+  }
+  /** Dated events from content.json on that London date, as fixed-start planner stops. */
+  function eventNodes(date) {
+    const P = TP();
+    const out = [];
+    for (const e of state.data.events) {
+      if (e.cancelled || e.city !== 'LONDON' || !e.place || !e.place.hasCoords) continue;
+      // courses, chess and school sessions need registration for the whole series: not something to drop into
+      if (['COURSE', 'CHESS', 'SCHOOL'].includes(e.place.category) || /须整期报名/.test(e.title)) continue;
+      const st = P.londonParts(e.start);
+      if (st.key !== date.key) continue;
+      const dur = Math.max(30, Math.min(120, Math.round((e.end - e.start) / 60000) || 90));
+      const n = P.compilePlace({ id: 'ev-' + e.id, name: e.title, category: e.place.category, lat: e.place.lat, lng: e.place.lng },
+        { slots: `${P.DAY_CODES[date.dow]} ${clock(st.min)}`, visitMin: dur, score: 4, price: e.priceMinor, indoor: 'in', tags: [], best: [], dates: { from: date.key, to: date.key } });
+      n.event = e;
+      n.place = e.place;
+      out.push(n);
+    }
+    return out;
+  }
+
+  function computePlan(fast) {
+    const P = TP();
+    const date = planDate();
+    const sun = sunFor(date);
+    let [a, b] = state.plan.window;
+    const nowL = londonNow();
+    let shifted = false;
+    if (date.key === nowL.key && a < nowL.min + 5) { a = Math.ceil((nowL.min + 5) / 5) * 5; shifted = true; }
+    const start = startPoint();
+    const base = { date, sun, window: [a, b], asked: state.plan.window.slice(), shifted, start, stops: [], fast };
+    if (b - a < 30) return Object.assign(base, { empty: b <= a ? 'past' : 'short' });
+    const t0 = window.performance ? performance.now() : 0;
+    const res = P.plan({
+      nodes: state.data.nodes, extra: eventNodes(date), date, sun, window: [a, b], start, end: state.plan.back ? start : null,
+      weights: planWeights(), pace: state.plan.pace, freeOnly: state.plan.freeOnly, rainy: state.plan.rainy, kids: state.plan.kids,
+      meals: state.plan.meals, pinned: new Set(state.plan.pins), excluded: state.excluded,
+      seed: P.hashStr(`${date.key}|${start.lat.toFixed(3)},${start.lng.toFixed(3)}`), iterations: fast ? 0 : 14, maxCandidates: fast ? 50 : 80,
+    });
+    res.ms = window.performance ? performance.now() - t0 : 0;
+    return Object.assign(base, res);
+  }
+  let planRaf = 0;
+  let planTimer = 0;
+  /** Re-plan: fast (no local search) while a handle is being dragged, full once it is let go. */
+  function schedulePlan(fast, opts = {}) {
+    if (opts.fit) state.fitRoute = true;
+    window.cancelAnimationFrame(planRaf);
+    window.clearTimeout(planTimer);
+    const run = () => {
+      if (state.tab !== 'guide' || !state.data || !TP()) return;
+      state.planRes = computePlan(fast);
+      paintPlan();
+    };
+    if (fast) planRaf = window.requestAnimationFrame(run);
+    else planTimer = window.setTimeout(run, 30);
+  }
+
+  function togglePin(id) {
+    const pins = state.plan.pins;
+    const i = pins.indexOf(id);
+    if (i >= 0) pins.splice(i, 1); else { pins.push(id); state.excluded.delete(id); }
+    savePlan();
+    const p = state.data.placeById.get(id);
+    announce(i >= 0 ? `已从必去中移除 ${p ? p.name : ''}` : `已加入必去：${p ? p.name : ''}`);
+    for (const b of $$(`[data-pin="${CSS.escape(id)}"]`)) paintPinBtn(b);
+    if (state.tab === 'guide') { paintPins(); schedulePlan(false, { fit: true }); }
+  }
+  function pinButton(p, opts = {}) {
+    const b = h('button', { type: 'button', class: opts.small ? 'btn btn--quiet btn--icon pinbtn' : 'btn pinbtn', 'data-pin': p.id, 'data-fk': (opts.fk || 'pin:') + p.id });
+    b.addEventListener('click', () => togglePin(p.id));
+    paintPinBtn(b, opts.small);
+    return b;
+  }
+  function paintPinBtn(b, small = b.classList.contains('btn--icon')) {
+    const id = b.dataset.pin;
+    const on = state.plan.pins.includes(id);
+    const p = state.data && state.data.placeById.get(id);
+    b.setAttribute('aria-pressed', String(on));
+    b.setAttribute('aria-label', `${on ? '从必去中移除' : '加入必去'}：${p ? p.name : id}`);
+    b.title = on ? '已在必去清单（点击移除）' : '加入必去清单，规划时一定排进去';
+    b.replaceChildren(...[icon(on ? 'star-on' : 'star'), small ? null : h('span', null, on ? '已加入必去' : '加入必去')].filter(Boolean));
+  }
+  function planFrom(p) {
+    state.startKind = 'place';
+    state.startPoint = { lat: p.lat, lng: p.lng, label: p.zh || p.name, kind: 'place', placeId: p.id };
+    state.placeId = null;
+    selectOnMap(null);
+    state.fitRoute = true;
+    setTab('guide');
+    scrollPanelTop();
+  }
+
+  /* ------------------------------------------------------------------ guide: location */
+
+  function locate() {
+    if (!('geolocation' in navigator)) {
+      state.geo = { status: 'error', msg: '这个浏览器不支持定位。' };
+      paintStart();
+      return;
+    }
+    state.geo = { status: 'asking' };
+    paintStart();
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const km = haversineKm(CITIES.LONDON.ref, { lat, lng });
+      if (km > 60) {
+        state.geo = { status: 'far', lat, lng, acc: pos.coords.accuracy, km };
+        if (state.startKind === 'geo') state.startKind = 'preset';
+        announce(`你现在距伦敦市中心约 ${nf0.format(km)} km，已改用常用出发点`);
+      } else {
+        state.geo = { status: 'ok', lat, lng, acc: pos.coords.accuracy, km, at: now() };
+        state.startKind = 'geo';
+        announce(`已定位，精度约 ${nf0.format(pos.coords.accuracy)} 米`);
+      }
+      guideChanged({ fit: true });
+    }, (err) => {
+      state.geo = { status: err && err.code === 1 ? 'denied' : 'error', msg: err && err.code === 3 ? '定位超时。' : '' };
+      if (state.startKind === 'geo') state.startKind = 'preset';
+      paintStart();
+      announce(state.geo.status === 'denied' ? '定位被拒绝' : '定位失败');
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+  }
+  function onMapPick(e) {
+    const m = maps.LONDON;
+    state.picking = false;
+    if (m) m.el.classList.remove('is-picking');
+    state.startKind = 'pick';
+    state.startPoint = { lat: e.latlng.lat, lng: e.latlng.lng, label: '地图选点', kind: 'pick' };
+    announce('已把地图上选的点设为出发点');
+    guideChanged({ fit: false });
+  }
+  function togglePicking() {
+    const m = maps.LONDON;
+    if (!m) return;
+    state.picking = !state.picking;
+    m.el.classList.toggle('is-picking', state.picking);
+    m.map.off('click', onMapPick);
+    if (state.picking) {
+      m.map.once('click', onMapPick);
+      if (!mqDesktop.matches) { setMapMin(false); window.scrollTo({ top: 0, behavior: smooth() }); }
+      announce('在伦敦地图上点一下，设为出发点。按 Esc 取消');
+    }
+    paintStart();
+  }
+  /** Start point, date or preferences changed: refresh everything that depends on them. */
+  function guideChanged(opts = {}) {
+    if (state.tab !== 'guide') return;
+    paintStart();
+    paintNear();
+    schedulePlan(false, opts);
+  }
+
+  /* ------------------------------------------------------------------ guide: view */
+
+  function renderGuide() {
+    const view = els.views.guide;
+    const d = state.data;
+    const parts = [h('h2', { class: 'vh' }, '伦敦攻略：附近推荐与行程规划')];
+    if (!TP()) {
+      parts.push(h('div', { class: 'empty' }, h('p', { class: 'empty__title' }, '规划组件未能加载'), h('p', null, 'assets/planner.js 没有加载成功，请刷新页面重试。地点、活动和来源仍可使用。')));
+      view.replaceChildren(...parts);
+      return;
+    }
+    if (state.city === 'FUZHOU') {
+      const b = h('button', { type: 'button', class: 'btn', 'data-fk': 'guide:to-london' }, '切换到伦敦');
+      b.addEventListener('click', () => { setCity('LONDON'); refocus('guide:locate'); });
+      parts.push(h('div', { class: 'empty' }, h('p', { class: 'empty__title' }, '攻略目前只覆盖伦敦'), h('p', null, '附近推荐和时间条规划用的是伦敦地点的开放时间、游玩时长和交通估算。福州的地点仍可在“地点”里查看。'), h('div', { class: 'empty__actions' }, b)));
+      view.replaceChildren(...parts);
+      return;
+    }
+    if (!d.guide.ok) {
+      parts.push(h('p', { class: 'notice-inline' }, `攻略资料 ${GUIDE_PATH} 未能读取（${d.guide.error ? d.guide.error.message : '无数据'}）。下面只能用 content.json 里的地点。`));
+    }
+    parts.push(guideHead(), startSection(), nearSection(), planSection());
+    if (d.guide.routes.length) parts.push(routesSection());
+    if (d.guide.tips.length) parts.push(tipsSection());
+    parts.push(h('p', { class: 'foot' },
+      `攻略层 ${GUIDE_PATH}：${d.guide.count} 处新增地点，另为 ${d.guide.overlays} 处已有地点补充了开放时间与游玩建议${d.guide.updated ? `，整理于 ${d.guide.updated}` : ''}。`,
+      '路上时间按直线距离估算（步行约 4.6 km/h；较远时按地铁/公交门到门），只作安排参考；开放时间与票价以各地点来源页为准。定位只在本页内使用，不上传、不保存。'));
+    view.replaceChildren(...parts);
+    paintGuideClock();
+    paintStart();
+    paintNear();
+    paintBar();
+    paintPins();
+    schedulePlan(false, { fit: true });
+  }
+
+  function guideHead() {
+    return h('header', { class: 'ghead' },
+      h('p', { class: 'ghead__kicker' }, cityPlate('LONDON', 'sm'), h('span', null, '伦敦攻略')),
+      h('p', { class: 'ghead__line', 'data-guide-clock': '' }));
+  }
+  function paintGuideClock() {
+    const el = $('[data-guide-clock]');
+    if (!el || !TP()) return;
+    const n = londonNow();
+    const sun = sunFor(n);
+    el.replaceChildren(
+      h('span', null, '伦敦现在 ', h('b', { class: 'mono' }, clock(n.min)), ` · ${dateZh(n)}`),
+      h('span', null, '日出 ', h('span', { class: 'mono' }, clock(sun.rise)), ' · 日落 ', h('span', { class: 'mono' }, clock(sun.set))),
+      h('span', null, `${state.data.nodes.filter((x) => x.plan).length} 处可规划`));
+  }
+
+  /* start point */
+  function startSection() {
+    const locBtn = h('button', { type: 'button', class: 'btn', 'data-fk': 'guide:locate', 'data-locate': '' }, icon('locate'), h('span', null, '用我的位置'));
+    locBtn.addEventListener('click', () => locate());
+    const pickBtn = h('button', { type: 'button', class: 'btn', 'data-fk': 'guide:pick', 'data-pick': '', 'aria-pressed': 'false' }, icon('pin'), h('span', null, '在地图上点选'));
+    pickBtn.addEventListener('click', () => togglePicking());
+    if (state.mapsOff) pickBtn.hidden = true;
+    const sel = h('select', { class: 'select', 'data-fk': 'guide:preset', 'aria-label': '常用出发点' },
+      h('option', { value: '' }, '常用出发点…'),
+      START_PRESETS.map((x) => h('option', { value: x.key }, x.zh)));
+    sel.addEventListener('change', () => {
+      if (!sel.value) return;
+      state.plan.start = sel.value;
+      state.startKind = 'preset';
+      savePlan();
+      guideChanged({ fit: true });
+    });
+    return h('section', { class: 'gsec', 'aria-labelledby': 'g-start' },
+      h('h3', { class: 'gsec__title', id: 'g-start' }, '出发点'),
+      h('div', { class: 'startrow' }, locBtn, pickBtn, sel),
+      h('p', { class: 'startstatus', 'data-startstatus': '', role: 'status' }));
+  }
+  function paintStart() {
+    const el = $('[data-startstatus]');
+    if (!el) return;
+    const g = state.geo;
+    const st = startPoint();
+    const parts = [];
+    const pick = $('[data-pick]');
+    if (pick) {
+      pick.setAttribute('aria-pressed', String(!!state.picking));
+      pick.querySelector('span').textContent = state.picking ? '取消点选' : '在地图上点选';
+    }
+    const loc = $('[data-locate]');
+    if (loc) {
+      loc.setAttribute('aria-pressed', String(st.kind === 'geo'));
+      loc.querySelector('span').textContent = g.status === 'asking' ? '正在定位…' : st.kind === 'geo' ? '重新定位' : '用我的位置';
+      loc.disabled = g.status === 'asking';
+    }
+    const sel = $('select[data-fk="guide:preset"]');
+    if (sel) sel.value = st.kind === 'preset' ? state.plan.start : '';
+    if (state.picking) parts.push(h('b', null, '在伦敦地图上点一下作为出发点。'));
+    if (st.kind === 'geo') {
+      parts.push(h('span', { class: 'startstatus__main' }, icon('locate'), `从你的位置出发（精度约 ±${nf0.format(g.acc)} m，距 Charing Cross ${fmtKm(g.km)} km）`));
+    } else {
+      parts.push(h('span', { class: 'startstatus__main' }, icon('pin'), st.kind === 'pick' ? `从地图选点出发（${fmtCoord(st.lat, st.lng, 4)}）` : `从 ${st.label} 出发`));
+      if (g.status === 'denied') parts.push(h('span', { class: 'startstatus__warn' }, '定位权限被拒绝：可在浏览器的网站设置里允许定位，或继续用常用出发点、地图选点。'));
+      else if (g.status === 'far') parts.push(h('span', { class: 'startstatus__warn' }, `你现在距伦敦市中心约 ${nf0.format(g.km)} km，不在伦敦，所以先用常用出发点；到了伦敦再点“用我的位置”。`));
+      else if (g.status === 'error') parts.push(h('span', { class: 'startstatus__warn' }, `${g.msg || ''}暂时无法定位，可改用常用出发点或地图选点。`));
+    }
+    el.replaceChildren(...parts);
+  }
+
+  /* near me, now */
+  function nearSection() {
+    return h('section', { class: 'gsec', 'aria-labelledby': 'g-near' },
+      h('h3', { class: 'gsec__title', id: 'g-near' }, '此刻 · 附近能去', h('span', { class: 'gsec__meta', 'data-near-meta': '' })),
+      h('div', { 'data-near': '' }));
+  }
+  const REASON_ZH = { free: '免费', closing: '快关门了，抓紧', meal: '正是饭点', best: '这个时段最合适' };
+  function paintNear() {
+    const box = $('[data-near]');
+    if (!box || !TP()) return;
+    const P = TP();
+    const nowL = londonNow();
+    const sun = sunFor(nowL);
+    const here = startPoint();
+    const list = P.suggest({ nodes: state.data.nodes, now: nowL, here, sun, weights: planWeights(false), rainy: state.plan.rainy, excluded: state.excluded, maxMin: 40 });
+    const meta = $('[data-near-meta]');
+    if (meta) meta.textContent = `${clock(nowL.min)} · ${here.kind === 'geo' ? '你的位置' : here.label} · 40 分钟内`;
+    if (!list.length) {
+      box.replaceChildren(h('p', { class: 'muted nearempty' }, nowL.min >= 22 * 60 || nowL.min < 7 * 60
+        ? '这个时间附近没有还开着的推荐地点。可以在下面拖动时间条，规划明天。'
+        : '附近 40 分钟路程内，现在没有开放中的推荐地点。换个出发点，或在下面规划稍后的行程。'));
+      return;
+    }
+    const top = list.slice(0, 3);
+    const more = list.slice(3, 6);
+    const rest = list.slice(6).filter((x) => x.travel.mode === 'walk' && x.travel.min <= 15).sort((a, b) => a.travel.min - b.travel.min).slice(0, 10);
+    const wasOpen = !!$('details.nearmore[open]', box);
+    const parts = [h('ol', { class: 'ncards' }, top.map((x) => h('li', null, nearCard(x, sun))))];
+    if (more.length || rest.length) {
+      parts.push(h('details', { class: 'nearmore', open: wasOpen },
+        h('summary', { 'data-fk': 'guide:nearmore' }, icon('chev'), `再看 ${more.length + rest.length} 处${rest.length ? `（含步行 15 分钟内还开着的 ${rest.length} 处）` : ''}`),
+        more.length ? h('ol', { class: 'ncards', start: '4' }, more.map((x) => h('li', null, nearCard(x, sun)))) : null,
+        rest.length ? h('ul', { class: 'nearlist' }, rest.map((x) => h('li', null,
+          h('a', { class: 'nearlist__name', href: '#' + x.node.id, 'data-route': x.node.id }, glyph(catInfo(x.node.category), true), h('span', null, placeLabel(x.node))),
+          h('span', { class: 'nearlist__how mono' }, `${x.travel.min} 分`),
+          liveEl(x.node.place, 'nearlist__live')))) : null));
+    }
+    box.replaceChildren(...parts);
+  }
+  function legText(lg) {
+    return lg.mode === 'walk' ? `步行 ${lg.min} 分钟 · ${lg.km < 1 ? nf0.format(lg.km * 1000) + ' m' : lg.km.toFixed(1) + ' km'}` : `地铁/公交 约 ${lg.min} 分钟`;
+  }
+  function navUrl(a, b, mode) {
+    return `https://www.google.com/maps/dir/?api=1&origin=${a.lat.toFixed(6)},${a.lng.toFixed(6)}&destination=${b.lat.toFixed(6)},${b.lng.toFixed(6)}&travelmode=${mode === 'walk' ? 'walking' : 'transit'}`;
+  }
+  function nearCard(x, sun) {
+    const n = x.node;
+    const p = n.place;
+    const why = [];
+    if (x.reasons.includes('sunset')) why.push(`日落 ${clock(sun.set)}，现在去正好`);
+    if (x.kind === 'soon') why.push(`${clock(x.status.opensAt)} 开门`);
+    if (x.kind === 'slot') why.push(`${clock(x.status.nextSlot)} 开场`);
+    for (const r of x.reasons) if (REASON_ZH[r]) why.push(REASON_ZH[r]);
+    if (n.score >= 5) why.unshift('必看');
+    const g = p.g || {};
+    const card = h('article', { class: 'ncard', 'data-id': p.id },
+      h('a', { class: 'ncard__name', href: '#' + p.id, 'data-route': p.id, 'data-fk': 'near:' + p.id }, glyph(p.cat, true), h('span', null, p.zh || p.name), p.zh ? h('small', { lang: 'en' }, p.name) : null),
+      h('p', { class: 'ncard__how' }, h('span', { class: 'ncard__leg' }, legText(x.travel)), liveEl(p, 'ncard__live'), unverifiedBadge(p)),
+      why.length ? h('p', { class: 'ncard__why' }, why.map((w) => h('span', { class: 'why' }, w))) : null,
+      g.summary ? h('p', { class: 'ncard__sum' }, g.summary) : null,
+      h('p', { class: 'ncard__act' }, pinButton(p, { small: true, fk: 'npin:' }), extLink(navUrl(startPoint(), n, x.travel.mode), '导航', 'link ext ncard__nav')));
+    card.addEventListener('pointerenter', () => setHot(p.id, true));
+    card.addEventListener('pointerleave', () => setHot(p.id, false));
+    return card;
+  }
+
+  /* planner: controls */
+  function planSection() {
+    return h('section', { class: 'gsec planner', 'aria-labelledby': 'g-plan' },
+      h('h3', { class: 'gsec__title', id: 'g-plan' }, '拖动时间条 · 智能规划'),
+      dayChips(), timeBar(), presetChips(), prefControls(),
+      h('div', { class: 'pins', 'data-pins': '' }),
+      h('div', { class: 'planout', 'data-planout': '', 'aria-live': 'polite' }));
+  }
+  function dayChips() {
+    const P = TP();
+    const today = londonNow();
+    const cur = planDate();
+    const chips = [];
+    for (let i = 0; i < 7; i += 1) {
+      const dt = P.addDays(P.dateInfo(today.y, today.mo, today.d, 0), i);
+      const label = i === 0 ? '今天' : i === 1 ? '明天' : `周${DOW_ZH[dt.dow]}`;
+      // (the pressed state follows planDate(), which may already have moved to tomorrow)
+      const b = h('button', { type: 'button', class: 'chip daychip', 'aria-pressed': String(cur.key === dt.key), 'data-fk': 'day:' + i, 'data-day': dt.key, 'aria-label': `${label} ${dt.mo}月${dt.d}日` },
+        h('span', null, label), h('span', { class: 'num' }, `${dt.mo}/${dt.d}`));
+      b.addEventListener('click', () => setPlanDate(dt.key));
+      chips.push(b);
+    }
+    const input = h('input', { type: 'date', class: 'dateinput', min: today.key, value: cur.key, 'aria-label': '选择其他日期', 'data-fk': 'day:input' });
+    input.addEventListener('change', () => { if (TP().parseDateKey(input.value)) setPlanDate(input.value); });
+    return h('div', { class: 'daychips', role: 'group', 'aria-label': '哪一天' }, chips, input);
+  }
+  function setPlanDate(key) {
+    state.planDate = key;
+    const cur = planDate();
+    for (const b of $$('[data-day]')) b.setAttribute('aria-pressed', String(b.dataset.day === cur.key));
+    const input = $('.dateinput');
+    if (input) input.value = cur.key;
+    paintBar();
+    schedulePlan(false, { fit: true });
+  }
+
+  function timeBar() {
+    const [a, b] = state.plan.window;
+    const mk = (which, val) => h('input', { type: 'range', min: TBAR_MIN, max: TBAR_MAX, step: TBAR_STEP, value: val, class: 'tbar__input tbar__input--' + which, 'aria-label': which === 'a' ? '开始时间' : '结束时间', 'data-fk': 'tbar:' + which, 'data-tbar': which });
+    const ia = mk('a', a);
+    const ib = mk('b', b);
+    const clamp = (which) => {
+      let va = Number(ia.value);
+      let vb = Number(ib.value);
+      if (which === 'a' && va > vb - MIN_SPAN) { if (vb + (va - (vb - MIN_SPAN)) <= TBAR_MAX && va + MIN_SPAN <= TBAR_MAX) vb = va + MIN_SPAN; else va = vb - MIN_SPAN; }
+      if (which === 'b' && vb < va + MIN_SPAN) { if (vb - MIN_SPAN >= TBAR_MIN) va = vb - MIN_SPAN; else vb = va + MIN_SPAN; }
+      ia.value = va;
+      ib.value = vb;
+      state.plan.window = [Number(ia.value), Number(ib.value)];
+    };
+    for (const [el, which] of [[ia, 'a'], [ib, 'b']]) {
+      el.addEventListener('input', () => { clamp(which); paintBar(); schedulePlan(true); });
+      el.addEventListener('change', () => { clamp(which); paintBar(); savePlan(); schedulePlan(false, { fit: true }); });
+    }
+    const band = h('div', { class: 'tbar__band', 'data-band': '', title: '拖动整段时间', 'aria-hidden': 'true' });
+    // The inner box is inset by half a handle, so 0–100% there matches where the native handles' centres can go.
+    const track = h('div', { class: 'tbar__track', 'data-track': '' },
+      h('div', { class: 'tbar__inner' },
+        h('div', { class: 'tbar__night tbar__night--am', 'data-night': 'am', title: '日出前' }),
+        h('div', { class: 'tbar__night tbar__night--pm', 'data-night': 'pm', title: '日落后' }),
+        h('div', { class: 'tbar__now', 'data-tnow': '', hidden: true, title: '现在' }),
+        band),
+      ia, ib);
+    // Drag the band between the handles to slide the whole window.
+    band.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault();
+      band.setPointerCapture(ev.pointerId);
+      const x0 = ev.clientX;
+      const w0 = state.plan.window.slice();
+      const width = Math.max(1, (track.getBoundingClientRect().width || 1) - 22);
+      band.classList.add('is-drag');
+      const move = (e) => {
+        let dm = Math.round((((e.clientX - x0) / width) * (TBAR_MAX - TBAR_MIN)) / TBAR_STEP) * TBAR_STEP;
+        dm = Math.max(TBAR_MIN - w0[0], Math.min(TBAR_MAX - w0[1], dm));
+        const next = [w0[0] + dm, w0[1] + dm];
+        if (next[0] === state.plan.window[0]) return;
+        state.plan.window = next;
+        ia.value = next[0];
+        ib.value = next[1];
+        paintBar();
+        schedulePlan(true);
+      };
+      const up = () => {
+        band.classList.remove('is-drag');
+        band.removeEventListener('pointermove', move);
+        band.removeEventListener('pointerup', up);
+        band.removeEventListener('pointercancel', up);
+        savePlan();
+        schedulePlan(false, { fit: true });
+      };
+      band.addEventListener('pointermove', move);
+      band.addEventListener('pointerup', up);
+      band.addEventListener('pointercancel', up);
+    });
+    const ticks = [];
+    for (let m = TBAR_MIN; m <= TBAR_MAX; m += 120) ticks.push(h('span', { class: 'tbar__tick', style: `left:${((m - TBAR_MIN) / (TBAR_MAX - TBAR_MIN)) * 100}%` }, pad(Math.floor(m / 60) % 24)));
+    return h('div', { class: 'tbar', 'data-tbarbox': '' },
+      h('p', { class: 'tbar__readout', 'data-readout': '' }),
+      track,
+      h('div', { class: 'tbar__ticks', 'aria-hidden': 'true' }, ticks),
+      h('div', { class: 'tbar__plan', 'data-tbar-plan': '', 'aria-hidden': 'true' }));
+  }
+  const tpos = (m) => `${(Math.max(0, Math.min(TBAR_MAX - TBAR_MIN, m - TBAR_MIN)) / (TBAR_MAX - TBAR_MIN)) * 100}%`;
+  function paintBar() {
+    const box = $('[data-tbarbox]');
+    if (!box) return;
+    const [a, b] = state.plan.window;
+    const date = planDate();
+    for (const el of $$('[data-day]')) el.setAttribute('aria-pressed', String(el.dataset.day === date.key));
+    const di = $('.dateinput');
+    if (di && di.value !== date.key && doc.activeElement !== di) di.value = date.key;
+    const sun = sunFor(date);
+    const track = $('[data-track]', box);
+    track.style.setProperty('--a', tpos(a));
+    track.style.setProperty('--b', tpos(b));
+    $('[data-night="am"]', box).style.width = tpos(sun.rise);
+    $('[data-night="pm"]', box).style.left = tpos(sun.set);
+    const nowL = londonNow();
+    const tn = $('[data-tnow]', box);
+    tn.hidden = date.key !== nowL.key || nowL.min < TBAR_MIN;
+    tn.style.left = tpos(nowL.min);
+    for (const el of $$('[data-tbar]', box)) el.setAttribute('aria-valuetext', clockNext(Number(el.value)));
+    const ro = $('[data-readout]', box);
+    ro.replaceChildren(
+      h('span', { class: 'tbar__day' }, `${date.key === nowL.key ? '今天 ' : ''}${dateZh(date)}`),
+      h('span', { class: 'tbar__range' }, h('b', { class: 'mono' }, clock(a)), ' → ', h('b', { class: 'mono' }, clockNext(b))),
+      h('span', { class: 'tbar__len' }, durText(b - a)),
+      h('span', { class: 'tbar__sun' }, `日落 ${clock(sun.set)}`));
+  }
+  function presetChips() {
+    const presets = [
+      ['now3', '从现在起 3 小时'], ['am', '上午', [570, 780]], ['pm', '下午', [780, 1080]], ['day', '全天', [570, 1260]], ['eve', '晚上', [1050, 1410]],
+    ];
+    const chips = presets.map(([key, label, w]) => {
+      const b = h('button', { type: 'button', class: 'chip', 'data-fk': 'tp:' + key }, label);
+      b.addEventListener('click', () => {
+        let win = w;
+        if (key === 'now3') {
+          const n = londonNow();
+          state.planDate = n.key;
+          const s = Math.min(TBAR_MAX - 180, Math.max(TBAR_MIN, Math.ceil((n.min + 5) / 15) * 15));
+          win = [s, Math.min(TBAR_MAX, s + 180)];
+        }
+        state.plan.window = win.slice();
+        for (const el of $$('[data-tbar]')) el.value = el.dataset.tbar === 'a' ? win[0] : win[1];
+        savePlan();
+        paintBar();
+        schedulePlan(false, { fit: true });
+      });
+      return b;
+    });
+    return h('div', { class: 'chips tpresets', role: 'group', 'aria-label': '常用时段' }, chips);
+  }
+  function prefControls() {
+    const p = state.plan;
+    const interest = PLAN_INTERESTS.map((k) => {
+      const cat = catInfo(k);
+      const b = h('button', { type: 'button', class: 'chip', 'aria-pressed': String(p.interests.includes(k)), 'data-fk': 'int:' + k }, glyph(cat, true), h('span', null, cat.zh));
+      b.addEventListener('click', () => {
+        const i = p.interests.indexOf(k);
+        if (i >= 0) p.interests.splice(i, 1); else p.interests.push(k);
+        b.setAttribute('aria-pressed', String(i < 0));
+        savePlan();
+        paintNear();
+        schedulePlan(false, { fit: true });
+      });
+      return b;
+    });
+    const seg = h('div', { class: 'seg', role: 'group', 'aria-label': '节奏' }, Object.entries(PACE_ZH).map(([k, label]) => {
+      const b = h('button', { type: 'button', class: 'seg__btn', 'aria-pressed': String(p.pace === k), 'data-fk': 'pace:' + k }, label);
+      b.addEventListener('click', () => {
+        p.pace = k;
+        for (const x of $$('[data-fk^="pace:"]')) x.setAttribute('aria-pressed', String(x === b));
+        savePlan();
+        schedulePlan(false, { fit: true });
+      });
+      return b;
+    }));
+    const toggles = [['meals', '安排午饭和晚饭'], ['events', '排入当天活动'], ['freeOnly', '只去免费的'], ['rainy', '下雨 · 室内优先'], ['kids', '带孩子'], ['back', '最后回到出发点']].map(([k, label]) => {
+      const b = h('button', { type: 'button', class: 'chip chip--toggle', 'aria-pressed': String(!!p[k]), 'data-fk': 'opt:' + k }, label);
+      b.addEventListener('click', () => {
+        p[k] = !p[k];
+        b.setAttribute('aria-pressed', String(p[k]));
+        savePlan();
+        if (k === 'rainy') paintNear();
+        schedulePlan(false, { fit: true });
+      });
+      return b;
+    });
+    return h('div', { class: 'prefs' },
+      h('div', { class: 'prefs__row' }, h('span', { class: 'prefs__label' }, '想看'), h('div', { class: 'chips', role: 'group', 'aria-label': '兴趣（可多选，不选为均衡）' }, interest)),
+      h('div', { class: 'prefs__row' }, h('span', { class: 'prefs__label' }, '节奏'), seg),
+      h('div', { class: 'prefs__row' }, h('span', { class: 'prefs__label' }, '选项'), h('div', { class: 'chips', role: 'group', 'aria-label': '规划选项' }, toggles)));
+  }
+  function paintPins() {
+    const box = $('[data-pins]');
+    if (!box) return;
+    const d = state.data;
+    const pins = state.plan.pins.map((id) => d.placeById.get(id)).filter(Boolean);
+    const parts = [];
+    if (pins.length) {
+      const clear = h('button', { type: 'button', class: 'linkbtn', 'data-fk': 'pins:clear' }, '清空');
+      clear.addEventListener('click', () => { state.plan.pins = []; savePlan(); for (const b of $$('[data-pin]')) paintPinBtn(b); paintPins(); schedulePlan(false, { fit: true }); });
+      parts.push(h('p', { class: 'pins__line' }, h('span', { class: 'prefs__label' }, `必去 ${pins.length}`),
+        pins.map((p) => {
+          const x = h('button', { type: 'button', class: 'pinchip', 'aria-label': `从必去中移除 ${p.name}`, 'data-fk': 'pinx:' + p.id }, glyph(p.cat, true), h('span', null, p.zh || p.name), icon('x'));
+          x.addEventListener('click', () => togglePin(p.id));
+          return x;
+        }), clear));
+    }
+    if (state.excluded.size) {
+      const undo = h('button', { type: 'button', class: 'linkbtn', 'data-fk': 'ex:undo' }, '全部恢复');
+      undo.addEventListener('click', () => { state.excluded.clear(); paintPins(); paintNear(); schedulePlan(false); });
+      parts.push(h('p', { class: 'pins__line muted' }, `已排除 ${state.excluded.size} 处（“换一个”）`, undo));
+    }
+    if (!pins.length && !state.excluded.size) parts.push(h('p', { class: 'pins__hint muted' }, '在地点页点“加入必去”，规划时会优先排进去；不想去的可以在行程里点“换一个”。'));
+    box.replaceChildren(...parts);
+  }
+
+  /* planner: result */
+  function stopReasons(s, res) {
+    const n = s.node;
+    const out = [];
+    if (s.pinned) out.push('必去');
+    if (s.meal === 'lunch') out.push('午饭');
+    if (s.meal === 'dinner') out.push('晚饭');
+    if (n.event) out.push('当天活动');
+    if (s.slot != null) out.push(`${clock(s.slot)} 开场`);
+    const mid = (s.start + s.end) / 2;
+    if (n.best.has('sunset') && mid >= res.sun.set - 60 && mid <= res.sun.set + 20) out.push('赶上日落');
+    if (!s.pinned && n.score >= 5) out.push('必看');
+    if (n.price === 0 && !n.spend) out.push('免费');
+    if (state.plan.rainy && n.indoor === 'in') out.push('室内');
+    if (state.plan.kids && n.tags.has('kids')) out.push('适合孩子');
+    if (s.slot != null) out.push(`提前 ${s.slot - s.start} 分钟到场`);
+    else if (s.wait >= 5) out.push(`等 ${s.wait} 分钟开门`);
+    return out;
+  }
+  function paintPlan() {
+    const res = state.planRes;
+    const out = $('[data-planout]');
+    const strip = $('[data-tbar-plan]');
+    if (!out || !res) return;
+    paintBar();
+    const span = TBAR_MAX - TBAR_MIN;
+    const P = TP();
+    // blocks on the time bar
+    if (strip) {
+      const blocks = [];
+      let prevEnd = res.window[0];
+      res.stops.forEach((s, i) => {
+        const travelStart = s.arrive - s.leg.min;
+        blocks.push(h('span', { class: 'tbar__leg', style: `left:${tpos(Math.max(prevEnd, travelStart))};width:${((s.arrive - Math.max(prevEnd, travelStart)) / span) * 100}%` }));
+        blocks.push(h('span', { class: 'tbar__blk', 'data-cat': s.node.category, style: `left:${tpos(s.start)};width:${((s.end - s.start) / span) * 100}%`, title: `${clockNext(s.start)}–${clockNext(s.end)} ${placeLabel(s.node)}` }, String(i + 1)));
+        prevEnd = s.end;
+      });
+      if (res.back) blocks.push(h('span', { class: 'tbar__leg', style: `left:${tpos(prevEnd)};width:${(res.back.min / span) * 100}%` }));
+      strip.replaceChildren(...blocks);
+    }
+    const parts = [];
+    if (res.empty) {
+      parts.push(h('div', { class: 'empty' }, h('p', { class: 'empty__title' }, res.empty === 'past' ? '这个时段已经过去了' : '时间太短'),
+        h('p', null, res.empty === 'past' ? '把时间条往后拖，或选明天。' : '可规划时间不足 30 分钟。把时间条拉长一些。')));
+      out.replaceChildren(...parts);
+      drawGuide();
+      return;
+    }
+    const t = res.totals;
+    const notes = [];
+    if (res.shifted) notes.push(`今天已过 ${clock(res.asked[0])}，从现在（${clock(res.window[0])}）开始排。`);
+    if (res.xmas) notes.push('圣诞节当天地铁和公交停运，绝大多数博物馆、商店和餐厅关门：这里只排全天开放的户外地点和皇家公园，全程步行，饭请提前订好。');
+    if (res.date.auto) notes.push(`今天 ${clock(res.asked[0])}–${clockNext(res.asked[1])} 已经过去，先排的是明天（${dateZh(res.date)}）；想排今晚，把时间条往后拖，或点“从现在起 3 小时”。`);
+    const pm = res.stops.find((s) => s.pinned && s.node.meal && !s.meal);
+    if (res.needs.lunch && !res.hadLunch) {
+      notes.push(pm ? `必去的“${pm.node.zh || pm.node.name}”排在 ${clockNext(pm.start)}，没赶上午饭时段（必去较多时先保证都排得进）；想中午吃，可减少必去或换一天。`
+        : '没排进午饭：附近收录的餐厅在这个时段不开，或时间太紧；可在沿途的博物馆咖啡厅或小店简单吃点。');
+    }
+    if (res.needs.dinner && !res.hadDinner) {
+      const show = res.stops.find((s) => s.slot != null && s.start < TP().DINNER[1] && s.end > TP().DINNER[0]);
+      notes.push(show ? `晚饭时段在看“${show.node.zh || show.node.name}”：可以开场前就近简单吃点，或散场后再吃。`
+        : '没排进晚饭：附近收录的餐厅这个时段不开，或时间太紧；可以把时间条往后拉一点，或就近吃。');
+    }
+    for (const u of res.unplaced) notes.push(`必去“${u.node.zh || u.node.name}”没排进去：${u.why}。`);
+    const nm = (s) => `“${s.node.zh || s.node.name}”`;
+    const vary = res.stops.filter((s) => s.node.vary).map(nm);
+    const unv = res.stops.filter((s) => s.node.place && s.node.place.unverified).map(nm);
+    if (vary.length) notes.push(`${vary.join('、')}的开放时间每天不同，这里按保守时段排；出发前在官网日历确认当天时间。`);
+    if (unv.length) notes.push(`${unv.join('、')}的开放时间待核实，出发前请查官网。`);
+    if (!res.stops.length) {
+      parts.push(h('div', { class: 'empty' }, h('p', { class: 'empty__title' }, '这个时段排不出行程'),
+        h('p', null, '所选时段里，从出发点能赶到、又开门的地点太少。试试拉长时间条、换一天，或去掉“只去免费的”等选项。')));
+    } else {
+      const visit = t.visitMin;
+      const move = t.walkMin + t.transitMin;
+      parts.push(h('p', { class: 'plansum' },
+        h('b', null, `${res.stops.length} 站`), ` · 游览 ${durText(visit)} · 路上 ${durText(move)}`,
+        t.walkKm >= 0.1 ? `（步行约 ${t.walkKm.toFixed(1)} km）` : '',
+        ` · 门票约 ${t.cost ? pence(t.cost) + (t.costKnown ? '' : ' 起') : t.costKnown ? '£0' : '另计'}`,
+        t.food || !t.foodKnown ? ` · 餐饮人均约 ${t.food ? pence(t.food) : '—'}${t.food && !t.foodKnown ? ' 起' : ''}` : '',
+        h('span', { class: 'plansum__end' }, ` · ${clockNext(res.endT)} 结束`)));
+    }
+    if (notes.length) parts.push(h('ul', { class: 'plannotes' }, notes.map((x) => h('li', null, x))));
+    if (res.stops.length) {
+      const items = [h('li', { class: 'itin__mark' }, h('span', { class: 'itin__time mono' }, clock(res.window[0])), h('span', null, `出发 · ${res.start.label}`))];
+      let prev = res.start;
+      res.stops.forEach((s, i) => {
+        items.push(h('li', { class: 'itin__leg' }, h('span', { class: 'itin__legtxt' }, icon(s.leg.mode === 'walk' ? 'walk' : 'tube'), legText(s.leg)), extLink(navUrl(prev, s.node, s.leg.mode), '路线', 'link ext itin__nav')));
+        items.push(itinStop(s, i, res));
+        prev = s.node;
+      });
+      if (res.back) items.push(h('li', { class: 'itin__leg' }, h('span', { class: 'itin__legtxt' }, icon(res.back.mode === 'walk' ? 'walk' : 'tube'), legText(res.back)), extLink(navUrl(prev, res.start, res.back.mode), '路线', 'link ext itin__nav')));
+      items.push(h('li', { class: 'itin__mark' }, h('span', { class: 'itin__time mono' }, clockNext(res.endT)), h('span', null, res.back ? `回到 ${res.start.label}` : '结束')));
+      parts.push(h('ol', { class: 'itin' }, items));
+      parts.push(planActions(res));
+    }
+    if (!res.fast) parts.push(h('p', { class: 'note planalgo' }, `按开放时间、最后入场、游玩时长、路上时间、日落与饭点自动排序；拖动时间条会实时重排。（本次计算 ${Math.max(1, Math.round(res.ms))} ms）`));
+    keepFocus(() => out.replaceChildren(...parts));
+    drawGuide();
+  }
+  function itinStop(s, i, res) {
+    const n = s.node;
+    const p = n.place;
+    const date = res.date;
+    const why = stopReasons(s, res);
+    const iv = n.slots ? null : TP().intervalsOn(n, date, res.sun);
+    const facts = [];
+    if (iv) facts.push(n.vary ? `按 ${ivText(iv)} 估算` : `当天 ${ivText(iv)}`);
+    if (n.lastEntry != null && iv && iv.length) facts.push(`最后入场 ${clock(iv[iv.length - 1][1] - n.lastEntry)}`);
+    facts.push(n.spend ? (n.price ? `人均约 ${pence(n.price)}` : '入场免费 · 餐饮另计') : pence(n.price));
+    facts.push(INDOOR_ZH[n.indoor]);
+    const swap = h('button', { type: 'button', class: 'btn btn--quiet btn--icon', title: '换一个：不去这里，重新规划', 'aria-label': `换掉 ${n.name}`, 'data-fk': 'swap:' + n.id }, icon('swap'), h('span', null, '换一个'));
+    swap.addEventListener('click', () => {
+      if (n.event) { state.plan.events = false; const t = $('[data-fk="opt:events"]'); if (t) t.setAttribute('aria-pressed', 'false'); savePlan(); }
+      else { state.excluded.add(n.id); const k = state.plan.pins.indexOf(n.id); if (k >= 0) { state.plan.pins.splice(k, 1); savePlan(); } }
+      paintPins();
+      paintNear();
+      schedulePlan(false);
+      refocus('swap:' + n.id) || refocus('tbar:a');
+    });
+    const li = h('li', { class: 'itin__stop', 'data-id': p ? p.id : null },
+      h('span', { class: 'itin__n', 'data-cat': n.category, 'aria-hidden': 'true' }, String(i + 1)),
+      h('span', { class: 'itin__time mono' }, `${clockNext(s.start)}–${clockNext(s.end)}`),
+      h('span', { class: 'itin__main' },
+        p ? h('a', { class: 'itin__name', href: '#' + p.id, 'data-route': p.id, 'data-fk': 'itin:' + n.id }, glyph(p.cat, true), h('span', null, n.event ? n.name : placeLabel(n)))
+          : h('span', { class: 'itin__name' }, n.name),
+        n.event && p ? h('span', { class: 'itin__where' }, `地点：${p.zh || p.name}`) : null,
+        why.length ? h('span', { class: 'itin__why' }, why.map((w) => h('span', { class: 'why' }, w))) : null,
+        h('span', { class: 'itin__facts' }, facts.join(' · '), p && (p.unverified || p.vary) ? [' ', unverifiedBadge(p)] : null,
+          p && p.calendarUrl ? [' ', extLink(p.calendarUrl, '官网当天时间', 'link ext')] : null),
+        p && p.g && p.g.tips && p.g.tips.length ? h('span', { class: 'itin__tip' }, p.g.tips[0]) : null),
+      h('span', { class: 'itin__act' }, p && !n.event ? pinButton(p, { small: true, fk: 'ipin:' }) : null, swap));
+    if (p) {
+      li.addEventListener('pointerenter', () => setHot(p.id, true));
+      li.addEventListener('pointerleave', () => setHot(p.id, false));
+    }
+    return li;
+  }
+  function planActions(res) {
+    const P = TP();
+    const copy = copyButton(() => planText(res), '复制行程文字');
+    copy.querySelector('span').textContent = '复制行程';
+    const ics = h('button', { type: 'button', class: 'btn', 'data-fk': 'plan:ics' }, icon('cal'), h('span', null, '加入日历'));
+    ics.addEventListener('click', () => {
+      const evs = res.stops.map((s, i) => {
+        const p = s.node.place;
+        return {
+          id: `plan-${res.date.key}-${i + 1}-${s.node.id}`, title: `${i + 1}. ${s.node.event ? s.node.name : placeLabel(s.node)}`,
+          start: P.londonToUtc(res.date, s.start), end: P.londonToUtc(res.date, s.end), tz: CITIES.LONDON.tz, place: p || null,
+          sourceUrl: s.node.event ? s.node.event.sourceUrl : (p && p.vary && p.calendarUrl) || (p ? p.sourceUrl : ''),
+          note: p && p.vary ? `开放时间每天不同，出发前查官网日历：${p.calendarUrl || p.sourceUrl}` : p && p.unverified ? '开放时间待核实，出发前请查官网。' : null,
+          verifiedAt: p ? p.verifiedAt : null, priceMinor: s.node.spend && !s.node.price ? null : s.node.price, currency: 'GBP', series: null, status: '', sourceVersion: 0, deadline: null,
+        };
+      });
+      const blob = new Blob([buildICS(evs)], { type: 'text/calendar;charset=utf-8' });
+      const href = URL.createObjectURL(blob);
+      const a = h('a', { href, download: `london-plan-${res.date.key}.ics` });
+      doc.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(href), 5000);
+      announce(`已生成包含 ${evs.length} 站的日历文件`);
+    });
+    const pts = [res.start].concat(res.stops.map((s) => s.node));
+    if (res.back) pts.push(res.start);
+    const way = pts.slice(1, -1).slice(0, 8).map((x) => `${x.lat.toFixed(6)},${x.lng.toFixed(6)}`).join('|');
+    const last = pts[pts.length - 1];
+    const gmaps = `https://www.google.com/maps/dir/?api=1&origin=${pts[0].lat.toFixed(6)},${pts[0].lng.toFixed(6)}&destination=${last.lat.toFixed(6)},${last.lng.toFixed(6)}${way ? '&waypoints=' + encodeURIComponent(way) : ''}&travelmode=walking`;
+    return h('div', { class: 'planact' }, copy, ics, extLink(gmaps, '整条路线（Google 地图）', 'btn'));
+  }
+  function planText(res) {
+    const lines = [`伦敦行程 · ${dateZh(res.date)} ${clock(res.window[0])}–${clockNext(res.endT)}（从 ${res.start.label} 出发）`];
+    res.stops.forEach((s, i) => {
+      lines.push(`  ↓ ${legText(s.leg)}`);
+      const cal = s.node.place && s.node.place.calendarUrl;
+      lines.push(`${i + 1}. ${clockNext(s.start)}–${clockNext(s.end)}  ${s.node.event ? s.node.name : placeLabel(s.node)}${s.meal === 'lunch' ? '（午饭）' : s.meal === 'dinner' ? '（晚饭）' : ''}${s.node.vary ? '（时间每天不同，以官网日历为准）' : ''}`);
+      if (cal && s.node.vary) lines.push(`   官网日历：${cal}`);
+    });
+    if (res.back) lines.push(`  ↓ ${legText(res.back)}，回到出发点`);
+    lines.push('', '由 双城图志 生成。路上时间为估算，开放时间与票价以官网为准。');
+    return lines.join('\n');
+  }
+
+  /* curated routes and practical tips */
+  function routesSection() {
+    const d = state.data;
+    const cards = d.guide.routes.map((r) => {
+      const stops = r.stops.map((id) => d.placeById.get(id)).filter(Boolean);
+      const b = h('button', { type: 'button', class: 'btn', 'data-fk': 'route:' + r.id }, '套用这条');
+      b.addEventListener('click', () => {
+        state.plan.pins = stops.map((p) => p.id);
+        if (Array.isArray(r.window) && r.window.length === 2) state.plan.window = [Math.max(TBAR_MIN, r.window[0]), Math.min(TBAR_MAX, r.window[1])];
+        if (Array.isArray(r.interests)) state.plan.interests = r.interests.filter((k) => PLAN_INTERESTS.includes(k));
+        for (const el of $$('[data-tbar]')) el.value = el.dataset.tbar === 'a' ? state.plan.window[0] : state.plan.window[1];
+        for (const x of $$('[data-fk^="int:"]')) x.setAttribute('aria-pressed', String(state.plan.interests.includes(x.dataset.fk.slice(4))));
+        if (r.start && START_PRESETS.some((x) => x.key === r.start)) { state.plan.start = r.start; if (state.startKind !== 'geo') state.startKind = 'preset'; }
+        savePlan();
+        for (const x of $$('[data-pin]')) paintPinBtn(x);
+        paintStart();
+        paintPins();
+        paintBar();
+        schedulePlan(false, { fit: true });
+        const target = $('[data-planout]');
+        if (target) scrollToEl($('#g-plan') || target);
+        announce(`已套用“${r.title}”：${stops.length} 处必去，${clock(state.plan.window[0])} 到 ${clockNext(state.plan.window[1])}`);
+      });
+      return h('li', { class: 'rcard' },
+        h('p', { class: 'rcard__title' }, r.title, Array.isArray(r.window) ? h('span', { class: 'rcard__win mono' }, `${clock(r.window[0])}–${clockNext(r.window[1])}`) : null),
+        r.desc ? h('p', { class: 'rcard__desc' }, r.desc) : null,
+        h('p', { class: 'rcard__stops' }, stops.map((p, i) => [i ? h('span', { class: 'sep', 'aria-hidden': 'true' }, '→') : null, h('a', { class: 'link', href: '#' + p.id, 'data-route': p.id }, p.zh || p.name)])),
+        b);
+    });
+    return h('section', { class: 'gsec', 'aria-labelledby': 'g-routes' },
+      h('h3', { class: 'gsec__title', id: 'g-routes' }, '现成路线', h('span', { class: 'gsec__meta' }, '一键设为必去，再按上面的时间条和日期排时间')),
+      h('ul', { class: 'rcards' }, cards));
+  }
+  function tipsSection() {
+    return h('section', { class: 'gsec', 'aria-labelledby': 'g-tips' },
+      h('h3', { class: 'gsec__title', id: 'g-tips' }, '伦敦须知'),
+      state.data.guide.tips.map((t, i) => h('details', { class: 'tip', open: i === 0 },
+        h('summary', { 'data-fk': 'tip:' + i }, icon('chev'), t.title),
+        h('ul', { class: 'tip__list' }, (t.items || []).map((x) => h('li', null, richText(x)))),
+        t.source ? h('p', { class: 'tip__src' }, extLink(t.source, `来源：${domainOf(t.source)}`)) : null)));
+  }
+
+  /* map layer: start, my location, route */
+  function guidePanes(m) {
+    if (m.gRoute) return;
+    const L = window.L;
+    m.map.createPane('tcaRoute').style.zIndex = 450;
+    m.map.createPane('tcaStops').style.zIndex = 640;
+    m.gRoute = L.layerGroup().addTo(m.map);
+    m.gStops = L.layerGroup().addTo(m.map);
+  }
+  function drawGuide() {
+    const m = maps.LONDON;
+    if (!m || state.mapsOff || !window.L) return;
+    guidePanes(m);
+    m.gRoute.clearLayers();
+    m.gStops.clearLayers();
+    const on = state.tab === 'guide' && !!state.data && state.city !== 'FUZHOU' && !!TP();
+    m.el.classList.toggle('is-picking', on && state.picking);
+    if (!on) return;
+    const L = window.L;
+    const g = state.geo;
+    if (g.status === 'ok') {
+      L.circle([g.lat, g.lng], { radius: Math.min(g.acc || 0, 2000), pane: 'tcaRoute', className: 'geo-acc', interactive: false }).addTo(m.gRoute);
+      L.marker([g.lat, g.lng], { pane: 'tcaStops', interactive: false, keyboard: false, icon: L.divIcon({ className: 'geo-wrap', html: h('span', { class: 'geo-dot' }), iconSize: [18, 18], iconAnchor: [9, 9] }) }).addTo(m.gStops);
+    }
+    const start = startPoint();
+    if (start.kind !== 'geo') {
+      L.marker([start.lat, start.lng], { pane: 'tcaStops', interactive: false, keyboard: false, icon: L.divIcon({ className: 'startpin-wrap', html: h('span', { class: 'startpin' }, '起'), iconSize: [24, 24], iconAnchor: [12, 12] }) }).addTo(m.gStops);
+    }
+    const res = state.planRes;
+    const ids = new Set();
+    const pts = [[start.lat, start.lng]];
+    if (res && res.stops && res.stops.length) {
+      let prev = start;
+      res.stops.forEach((s, i) => {
+        const n = s.node;
+        L.polyline([[prev.lat, prev.lng], [n.lat, n.lng]], { pane: 'tcaRoute', className: 'route-leg is-' + s.leg.mode, interactive: false }).addTo(m.gRoute);
+        const mk = L.marker([n.lat, n.lng], {
+          pane: 'tcaStops', keyboard: false, title: `${i + 1}. ${n.name}`,
+          icon: L.divIcon({ className: 'stopnum-wrap', html: h('span', { class: 'stopnum', 'data-cat': n.category }, String(i + 1)), iconSize: [20, 20], iconAnchor: [-3, 25] }),
+        });
+        const pid = n.place && n.place.id;
+        if (pid) mk.on('click', () => openPlace(pid, { from: 'map', focus: true }));
+        mk.addTo(m.gStops);
+        if (pid) ids.add(pid);
+        pts.push([n.lat, n.lng]);
+        prev = n;
+      });
+      if (res.back) L.polyline([[prev.lat, prev.lng], [start.lat, start.lng]], { pane: 'tcaRoute', className: 'route-leg is-back is-' + res.back.mode, interactive: false }).addTo(m.gRoute);
+    }
+    applyMarkerFilter(ids.size ? ids : null);
+    if (state.fitRoute && res && !res.fast && mapVisible(m)) {
+      state.fitRoute = false;
+      if (g.status === 'ok') pts.push([g.lat, g.lng]);
+      if (pts.length > 1) m.map.fitBounds(window.L.latLngBounds(pts), Object.assign({ maxZoom: 15, animate: !mqReduce.matches }, fitPadding(m)));
+      else m.map.setView(pts[0], 14, { animate: !mqReduce.matches });
+      m.fitted = true;
+      m.autoFit = false;
+    }
+  }
+  function activateGuide() {
+    drawGuide();
+  }
+
+  /* place page: planning facts, weekly hours, tips */
+  function guideBlock(p) {
+    const g = p.g;
+    const n = p.node;
+    const P = TP();
+    const sec = h('section', { class: 'guidebox', 'data-city': p.city, 'aria-labelledby': 'guide-label' },
+      h('h3', { class: 'label', id: 'guide-label' }, '游玩建议', p.guide ? null : h('span', { class: 'label__n' }, '攻略补充')));
+    if (n && P) sec.appendChild(h('p', { class: 'guidebox__now' }, liveEl(p, 'live--lg'), unverifiedBadge(p)));
+    const facts = [];
+    if (n) {
+      facts.push(h('dt', null, '建议时长'), h('dd', null, n.slots && n.category === 'NIGHT' ? `约 ${durText(n.visitMin)}（含中场）` : `约 ${durText(n.visitMin)}`));
+      facts.push(h('dt', null, '费用'), h('dd', null, pence(n.price), g.priceNote && g.priceNote !== pence(n.price) ? h('span', { class: 'muted' }, ` · ${g.priceNote}`) : null));
+      facts.push(h('dt', null, '室内/户外'), h('dd', null, INDOOR_ZH[n.indoor]));
+      if (n.best.size) facts.push(h('dt', null, '最佳时段'), h('dd', null, Array.from(n.best).map((b) => BEST_ZH[b] || b).join('、')));
+      facts.push(h('dt', null, '推荐度'), h('dd', null, h('span', { class: 'stars', 'aria-label': `${n.score} 分（满分 5）` }, '★'.repeat(n.score), h('span', { class: 'stars__off' }, '★'.repeat(5 - n.score))), n.score >= 5 ? ' 初访必去' : n.score === 4 ? ' 很值得' : ''));
+    }
+    if (p.calendarUrl) {
+      facts.push(h('dt', null, '开放时间'), h('dd', null, extLink(p.calendarUrl, p.vary ? '官网日历（每天不同）' : '官网开放时间'),
+        h('span', { class: 'muted' }, p.vary ? (n && (n.hours || n.slots) ? ' · 下表是规划用的保守时段，出发前查当天时间' : ' · 按官网日历预约场次，不自动排进行程') : ' · 个别日子有调整，以官网为准')));
+    }
+    if (g.station) facts.push(h('dt', null, '交通'), h('dd', null, g.station));
+    if (g.booking) facts.push(h('dt', null, '预约'), h('dd', null, g.booking));
+    if (facts.length) sec.appendChild(h('dl', { class: 'facts' }, facts));
+    if (Array.isArray(g.tips) && g.tips.length) sec.appendChild(h('ul', { class: 'tips' }, g.tips.map((t) => h('li', null, richText(t)))));
+    if (n && P) sec.appendChild(weekBlock(p));
+    if (g.verifyNote || g.overlayNote) sec.appendChild(h('p', { class: 'note guidebox__note' }, `核验说明：${g.verifyNote || g.overlayNote}`));
+    if (n && n.plan) {
+      const from = h('button', { type: 'button', class: 'btn', 'data-fk': 'from:' + p.id }, icon('route'), h('span', null, '从这里出发规划'));
+      from.addEventListener('click', () => planFrom(p));
+      sec.appendChild(h('div', { class: 'maplinks' }, n.hours || n.slots ? pinButton(p) : null, from));
+    }
+    return sec;
+  }
+  function weekBlock(p) {
+    const P = TP();
+    const n = p.node;
+    const today = londonNow();
+    const days = Array.from({ length: 7 }, (_, i) => { const d = P.addDays(today, i); return { date: d, slots: P.slotsOn(n, d) }; });
+    const rows = days.map((x) => {
+      const sun = sunFor(x.date);
+      const iv = n.slots ? null : P.intervalsOn(n, x.date, sun);
+      const text = n.slots ? (x.slots.length ? x.slots.map((m) => clock(m)).join('、') + ' 开场' : '无场次') : iv == null && n.vary ? '见官网日历' : ivText(iv);
+      const isToday = x.date.key === today.key;
+      return h('tr', { class: isToday ? 'is-today' : null },
+        h('th', { scope: 'row' }, `周${DOW_ZH[x.date.dow]}`, h('span', { class: 'muted' }, ` ${x.date.mo}/${x.date.d}`)),
+        h('td', { class: (iv && !iv.length) || (n.slots && !x.slots.length) ? 'is-off' : null }, text, isToday ? h('span', { class: 'vh' }, '（今天）') : null));
+    });
+    const notes = [];
+    if (n.vary) {
+      notes.push(n.slots ? '节目每天不同：表中是常规开场时间，当天有没有演出以官网节目单为准'
+        : n.hours ? '时间每天不同：表中是规划用的保守时段（官网各日里最短的），当天实际时间以官网日历为准'
+          : '时间每天不同，需按官网日历预约场次，所以不自动排进行程');
+    }
+    if (n.dates) notes.push(n.dates.to ? (n.dates.from <= today.key ? `开放至 ${n.dates.to}` : `只在 ${n.dates.from} 至 ${n.dates.to} 期间`) : `${n.dates.from} 起开放`);
+    if (n.seasonal.length) notes.push(`季节性时间：${n.seasonal.map((s) => `${s.from.replace('-', '月')}日–${s.to.replace('-', '月')}日另有安排`).join('；')}（表中已按日期计算）`);
+    if (n.closed.size) notes.push(`闭馆/休息日：${Array.from(n.closed).sort().map((x) => x.length === 5 ? x.replace('-', '月') + '日' : x).join('、')}`);
+    if (n.lastEntry != null) notes.push(`最后入场为关门前 ${n.lastEntry} 分钟`);
+    if (Array.from(n.hours ? n.hours.days : []).some((iv) => iv && iv.some((x) => x.dusk))) notes.push('“黄昏关门”按当天日落时间推算');
+    return h('div', { class: 'week7' },
+      h('table', { class: 'week7__table' }, h('caption', { class: 'vh' }, '未来 7 天开放时间（伦敦当地时间）'), h('tbody', null, rows)),
+      notes.length ? h('p', { class: 'note' }, notes.join('。') + '。') : null);
+  }
+
   /* ------------------------------------------------------------------ render dispatcher, states */
 
   function viewKey(tab) {
     if (tab === 'events') return `${state.gen}|${state.city}|${state.partition}|${evFilterKey()}`;
     if (tab === 'sources') return `${state.gen}`;
+    if (tab === 'guide') return `${state.gen}|${state.city === 'FUZHOU' ? 'F' : 'L'}`;
     return `${state.gen}|${state.city}`;
   }
   function render(opts = {}) {
@@ -3225,6 +4470,9 @@
         if (opts.force || state.notFound || view.dataset.key !== key || !$('[data-results]', view)) { renderPlaces(); view.dataset.key = key; }
         else applyMarkerFilter(state.query.trim() || state.cats.size ? new Set(placeFilter().shown.map((x) => x.id)) : null);
       }
+    } else if (tab === 'guide') {
+      const key = viewKey('guide');
+      if (opts.force || view.dataset.key !== key) { renderGuide(); view.dataset.key = key; } else activateGuide();
     } else if (tab === 'events') {
       state.partition = partitionKey();
       const key = viewKey('events');
@@ -3234,13 +4482,15 @@
       if (opts.force || view.dataset.key !== key) { renderSources(); view.dataset.key = key; } else applyMarkerFilter(null);
     }
     updateMapSolo();
+    if (tab !== 'guide') drawGuide();
     writeHash(opts);
   }
 
   /** 双城 on 活动 when one city has nothing coming up: give the whole map area to the other city. */
   function updateMapSolo() {
     let solo = '';
-    if (state.data && state.city === 'BOTH' && state.tab === 'events') {
+    if (state.data && state.city === 'BOTH' && state.tab === 'guide') solo = 'LONDON';
+    else if (state.data && state.city === 'BOTH' && state.tab === 'events') {
       const l = upcomingCount('LONDON');
       const f = upcomingCount('FUZHOU');
       if (l && !f) solo = 'LONDON'; else if (f && !l) solo = 'FUZHOU';
@@ -3276,11 +4526,15 @@
   async function load() {
     state.loadError = null;
     showLoading();
+    // The guide layer is optional: if it fails, the atlas still loads and the 攻略 tab says why.
+    const guideReq = fetch(GUIDE_PATH, { cache: 'no-cache' })
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .catch((err) => (err instanceof Error ? err : new Error(String(err))));
     try {
       const res = await fetch(CONTENT_PATH, { cache: 'no-cache' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      state.data = normalize(json);
+      state.data = normalize(json, await guideReq);
       state.gen += 1;
     } catch (err) {
       state.data = null;
@@ -3370,6 +4624,14 @@
       }
       renderCounts();
       updateMapSolo();
+      if (state.tab === 'guide' && TP() && els.views.guide.dataset.key) {
+        paintGuideClock();
+        paintNear();
+        paintBar();
+        const r = state.planRes;
+        const nowL = londonNow();
+        if (r && (r.shifted || r.empty || planDate().key !== r.date.key || (r.date.key === nowL.key && r.window[0] < nowL.min + 5))) schedulePlan(false);
+      }
     }
   }
   function scheduleTick() {
@@ -3498,6 +4760,7 @@
       }
     });
     doc.addEventListener('visibilitychange', () => { if (!doc.hidden) tick(); });
+    doc.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.picking) { togglePicking(); announce('已取消地图选点'); } });
   }
 
   /* ------------------------------------------------------------------ boot */
@@ -3515,9 +4778,11 @@
     els.atlas.dataset.city = city;
     setMapCity(city === 'FUZHOU' ? 'FUZHOU' : 'LONDON');
     for (const b of $$('[data-set-city]')) b.setAttribute('aria-pressed', String(b.dataset.setCity === city));
-    if (low === 'events' || low === 'sources') {
+    state.plan = loadPlan();
+    if (low === 'guide' && city === 'FUZHOU') { state.city = 'LONDON'; els.atlas.dataset.city = 'LONDON'; setMapCity('LONDON'); for (const b of $$('[data-set-city]')) b.setAttribute('aria-pressed', String(b.dataset.setCity === 'LONDON')); }
+    if (low === 'events' || low === 'sources' || low === 'guide') {
       setTab(low, { render: false });
-      if (!mqDesktop.matches) setMapMin(true, { auto: true });
+      if (!mqDesktop.matches && low !== 'guide') setMapMin(true, { auto: true });
     }
 
     clusterReady = loadClusterScript();
