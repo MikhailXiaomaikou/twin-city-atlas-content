@@ -60,6 +60,11 @@ test('a full day: feasible, inside opening hours, with lunch and dinner', () => 
     assert.ok(iv.some(([o, c]) => s.start >= o && s.end <= c), `${s.node.id} ${hm(s.start)}–${hm(s.end)} vs ${JSON.stringify(iv)}`);
   }
   for (let i = 1; i < r.stops.length; i += 1) assert.ok(r.stops[i].arrive >= r.stops[i - 1].end);
+  // meals are counted as food spend, not tickets
+  const sum = (f) => r.stops.filter((s) => f(s.node) && s.node.price != null).reduce((a, s) => a + s.node.price, 0);
+  assert.ok(r.totals.food > 0);
+  assert.strictEqual(r.totals.food, sum((x) => x.spend));
+  assert.strictEqual(r.totals.cost, sum((x) => !x.spend));
 });
 
 test('pinned places come first; impossible ones are reported', () => {

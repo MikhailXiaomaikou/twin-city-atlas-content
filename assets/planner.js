@@ -239,6 +239,7 @@
       tags: new Set(Array.isArray(g.tags) ? g.tags : []),
       plan: g.plan !== false,
       meal: base.category === 'FOOD' && g.meal !== false, // false for coffee bars and tea rooms
+      spend: base.category === 'FOOD' || /人均/.test(g.priceNote || ''), // price is food & drink per head, not a ticket
       errors,
     };
   }
@@ -616,12 +617,15 @@
       let waitMin = 0;
       let cost = 0;
       let costKnown = true;
+      let food = 0;
+      let foodKnown = true;
       const legs = res.stops.map((s) => s.leg).concat(res.back ? [res.back] : []);
       for (const lg of legs) { if (lg.mode === 'walk') { walkKm += lg.km; walkMin += lg.min; } else transitMin += lg.min; }
       for (const s of res.stops) {
         visitMin += s.end - s.start;
         waitMin += s.wait;
-        if (s.c.n.price == null) costKnown = false; else cost += s.c.n.price;
+        const n = s.c.n;
+        if (n.spend) { if (n.price == null) foodKnown = false; else food += n.price; } else if (n.price == null) costKnown = false; else cost += n.price;
       }
       const needs = {
         lunch: !!opts.meals && t0 <= LUNCH[0] && t1 >= LUNCH[1] + 45,
@@ -632,7 +636,7 @@
         back: res.back,
         endT: res.endT,
         value: res.value,
-        totals: { walkKm, walkMin, transitMin, visitMin, waitMin, cost, costKnown },
+        totals: { walkKm, walkMin, transitMin, visitMin, waitMin, cost, costKnown, food, foodKnown },
         unplaced: miss,
         needs: xmas ? { lunch: false, dinner: false } : needs,
         xmas,

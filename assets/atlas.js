@@ -4137,6 +4137,7 @@
         h('b', null, `${res.stops.length} 站`), ` · 游览 ${durText(visit)} · 路上 ${durText(move)}`,
         t.walkKm >= 0.1 ? `（步行约 ${t.walkKm.toFixed(1)} km）` : '',
         ` · 门票约 ${t.cost ? pence(t.cost) : '£0'}${t.costKnown ? '' : ' 起'}`,
+        t.food || !t.foodKnown ? ` · 餐饮人均约 ${t.food ? pence(t.food) : '—'}${t.food && !t.foodKnown ? ' 起' : ''}` : '',
         h('span', { class: 'plansum__end' }, ` · ${clockNext(res.endT)} 结束`)));
     }
     if (notes.length) parts.push(h('ul', { class: 'plannotes' }, notes.map((x) => h('li', null, x))));
