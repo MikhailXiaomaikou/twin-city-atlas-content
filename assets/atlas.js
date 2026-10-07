@@ -3172,6 +3172,7 @@
     const desc = [
       `当地时间：${md(e.start, e.tz)} ${timeRange(e, e.tz)}（${e.tz}）`,
       `费用：${priceText(e)}`,
+      e.note || null,
       e.deadline != null ? `报名截止：${md(e.deadline, e.tz)} ${hm(e.deadline, e.tz)}（${tzName(e.tz)}）` : null,
       e.series ? `系列：${e.series.title}${e.series.organizer ? '（主办 ' + e.series.organizer + '）' : ''}` : null,
       url ? `来源：${url.href}` : null,
@@ -3435,6 +3436,7 @@
       const f = P.parseDateKey(node.dates.from);
       return { text: `${f.mo}月${f.d}日开始`, cls: 'is-later' };
     }
+    if (nowL.md === '12-25' && !P.xmasOk(node) && !node.closed.has('12-25')) return { text: '圣诞节多数关门 · 以官网为准', cls: 'is-closed' };
     const st = P.statusAt(node, nowL, sunFor(nowL), sunFor(P.addDays(nowL, -1)));
     if (node.vary) { // the hours are a cautious typical window: never claim more than that
       if (st.state === 'open') return { text: '一般这时开着 · 以官网日历为准', cls: 'is-open' };
@@ -3449,7 +3451,10 @@
       return { text: `开放中 · 至 ${clock(st.closesAt)}`, cls: st.left <= 60 ? 'is-closing' : 'is-open' };
     }
     if (st.state === 'closed') return { text: st.opensAt != null ? `${clock(st.opensAt)} 开门` : st.closedToday ? '今天不开放' : '今天已关门', cls: 'is-closed' };
-    if (st.state === 'slots') return st.nextSlot != null ? { text: `今天 ${clock(st.nextSlot)} 开场`, cls: 'is-open' } : { text: '今天没有场次', cls: 'is-closed' };
+    if (st.state === 'slots') {
+      if (st.nextSlot != null) return { text: `今天 ${clock(st.nextSlot)} 开场`, cls: 'is-open' };
+      return P.slotsOn(node, nowL).length ? { text: '今天的场次已开始', cls: 'is-closed' } : { text: '今天没有场次', cls: 'is-closed' };
+    }
     return { text: '开放时间未知', cls: 'is-unknown' };
   }
   function liveEl(p, extra) {
@@ -3552,9 +3557,11 @@
     const out = [];
     for (const e of state.data.events) {
       if (e.cancelled || e.city !== 'LONDON' || !e.place || !e.place.hasCoords) continue;
+      // courses, chess and school sessions need registration for the whole series: not something to drop into
+      if (['COURSE', 'CHESS', 'SCHOOL'].includes(e.place.category) || /须整期报名/.test(e.title)) continue;
       const st = P.londonParts(e.start);
       if (st.key !== date.key) continue;
-      const dur = Math.max(30, Math.min(240, Math.round((e.end - e.start) / 60000) || 90));
+      const dur = Math.max(30, Math.min(120, Math.round((e.end - e.start) / 60000) || 90));
       const n = P.compilePlace({ id: 'ev-' + e.id, name: e.title, category: e.place.category, lat: e.place.lat, lng: e.place.lng },
         { slots: `${P.DAY_CODES[date.dow]} ${clock(st.min)}`, visitMin: dur, score: 4, price: e.priceMinor, indoor: 'in', tags: [], best: [], dates: { from: date.key, to: date.key } });
       n.event = e;
@@ -4099,10 +4106,10 @@
     const mid = (s.start + s.end) / 2;
     if (n.best.has('sunset') && mid >= res.sun.set - 60 && mid <= res.sun.set + 20) out.push('赶上日落');
     if (!s.pinned && n.score >= 5) out.push('必看');
-    if (n.price === 0) out.push('免费');
+    if (n.price === 0 && !n.spend) out.push('免费');
     if (state.plan.rainy && n.indoor === 'in') out.push('室内');
     if (state.plan.kids && n.tags.has('kids')) out.push('适合孩子');
-    if (s.slot != null) out.push('提前 15 分钟到场');
+    if (s.slot != null) out.push(`提前 ${s.slot - s.start} 分钟到场`);
     else if (s.wait >= 5) out.push(`等 ${s.wait} 分钟开门`);
     return out;
   }
@@ -4121,7 +4128,7 @@
       res.stops.forEach((s, i) => {
         const travelStart = s.arrive - s.leg.min;
         blocks.push(h('span', { class: 'tbar__leg', style: `left:${tpos(Math.max(prevEnd, travelStart))};width:${((s.arrive - Math.max(prevEnd, travelStart)) / span) * 100}%` }));
-        blocks.push(h('span', { class: 'tbar__blk', 'data-cat': s.node.category, style: `left:${tpos(s.start)};width:${((s.end - s.start) / span) * 100}%`, title: `${clock(s.start)}–${clockNext(s.end)} ${placeLabel(s.node)}` }, String(i + 1)));
+        blocks.push(h('span', { class: 'tbar__blk', 'data-cat': s.node.category, style: `left:${tpos(s.start)};width:${((s.end - s.start) / span) * 100}%`, title: `${clockNext(s.start)}–${clockNext(s.end)} ${placeLabel(s.node)}` }, String(i + 1)));
         prevEnd = s.end;
       });
       if (res.back) blocks.push(h('span', { class: 'tbar__leg', style: `left:${tpos(prevEnd)};width:${(res.back.min / span) * 100}%` }));
@@ -4138,10 +4145,18 @@
     const t = res.totals;
     const notes = [];
     if (res.shifted) notes.push(`今天已过 ${clock(res.asked[0])}，从现在（${clock(res.window[0])}）开始排。`);
-    if (res.xmas) notes.push('圣诞节当天地铁和公交停运，绝大多数博物馆、商店和餐厅关门：这里只排全天开放的户外地点，全程步行，饭请提前订好。');
+    if (res.xmas) notes.push('圣诞节当天地铁和公交停运，绝大多数博物馆、商店和餐厅关门：这里只排全天开放的户外地点和皇家公园，全程步行，饭请提前订好。');
     if (res.date.auto) notes.push(`今天 ${clock(res.asked[0])}–${clockNext(res.asked[1])} 已经过去，先排的是明天（${dateZh(res.date)}）；想排今晚，把时间条往后拖，或点“从现在起 3 小时”。`);
-    if (res.needs.lunch && !res.hadLunch) notes.push('没排进午饭：附近合适的餐厅在这个时段不开，或时间太紧。');
-    if (res.needs.dinner && !res.hadDinner) notes.push('没排进晚饭：可以把时间条往后拉一点。');
+    const pm = res.stops.find((s) => s.pinned && s.node.meal && !s.meal);
+    if (res.needs.lunch && !res.hadLunch) {
+      notes.push(pm ? `必去的“${pm.node.zh || pm.node.name}”排在 ${clockNext(pm.start)}，没赶上午饭时段（必去较多时先保证都排得进）；想中午吃，可减少必去或换一天。`
+        : '没排进午饭：附近收录的餐厅在这个时段不开，或时间太紧；可在沿途的博物馆咖啡厅或小店简单吃点。');
+    }
+    if (res.needs.dinner && !res.hadDinner) {
+      const show = res.stops.find((s) => s.slot != null && s.start < TP().DINNER[1] && s.end > TP().DINNER[0]);
+      notes.push(show ? `晚饭时段在看“${show.node.zh || show.node.name}”：可以开场前就近简单吃点，或散场后再吃。`
+        : '没排进晚饭：附近收录的餐厅这个时段不开，或时间太紧；可以把时间条往后拉一点，或就近吃。');
+    }
     for (const u of res.unplaced) notes.push(`必去“${u.node.zh || u.node.name}”没排进去：${u.why}。`);
     const nm = (s) => `“${s.node.zh || s.node.name}”`;
     const vary = res.stops.filter((s) => s.node.vary).map(nm);
@@ -4157,7 +4172,7 @@
       parts.push(h('p', { class: 'plansum' },
         h('b', null, `${res.stops.length} 站`), ` · 游览 ${durText(visit)} · 路上 ${durText(move)}`,
         t.walkKm >= 0.1 ? `（步行约 ${t.walkKm.toFixed(1)} km）` : '',
-        ` · 门票约 ${t.cost ? pence(t.cost) : '£0'}${t.costKnown ? '' : ' 起'}`,
+        ` · 门票约 ${t.cost ? pence(t.cost) + (t.costKnown ? '' : ' 起') : t.costKnown ? '£0' : '另计'}`,
         t.food || !t.foodKnown ? ` · 餐饮人均约 ${t.food ? pence(t.food) : '—'}${t.food && !t.foodKnown ? ' 起' : ''}` : '',
         h('span', { class: 'plansum__end' }, ` · ${clockNext(res.endT)} 结束`)));
     }
@@ -4188,7 +4203,7 @@
     const facts = [];
     if (iv) facts.push(n.vary ? `按 ${ivText(iv)} 估算` : `当天 ${ivText(iv)}`);
     if (n.lastEntry != null && iv && iv.length) facts.push(`最后入场 ${clock(iv[iv.length - 1][1] - n.lastEntry)}`);
-    facts.push(pence(n.price));
+    facts.push(n.spend ? (n.price ? `人均约 ${pence(n.price)}` : '入场免费 · 餐饮另计') : pence(n.price));
     facts.push(INDOOR_ZH[n.indoor]);
     const swap = h('button', { type: 'button', class: 'btn btn--quiet btn--icon', title: '换一个：不去这里，重新规划', 'aria-label': `换掉 ${n.name}`, 'data-fk': 'swap:' + n.id }, icon('swap'), h('span', null, '换一个'));
     swap.addEventListener('click', () => {
@@ -4201,7 +4216,7 @@
     });
     const li = h('li', { class: 'itin__stop', 'data-id': p ? p.id : null },
       h('span', { class: 'itin__n', 'data-cat': n.category, 'aria-hidden': 'true' }, String(i + 1)),
-      h('span', { class: 'itin__time mono' }, `${clock(s.start)}–${clockNext(s.end)}`),
+      h('span', { class: 'itin__time mono' }, `${clockNext(s.start)}–${clockNext(s.end)}`),
       h('span', { class: 'itin__main' },
         p ? h('a', { class: 'itin__name', href: '#' + p.id, 'data-route': p.id, 'data-fk': 'itin:' + n.id }, glyph(p.cat, true), h('span', null, n.event ? n.name : placeLabel(n)))
           : h('span', { class: 'itin__name' }, n.name),
@@ -4228,7 +4243,9 @@
         return {
           id: `plan-${res.date.key}-${i + 1}-${s.node.id}`, title: `${i + 1}. ${s.node.event ? s.node.name : placeLabel(s.node)}`,
           start: P.londonToUtc(res.date, s.start), end: P.londonToUtc(res.date, s.end), tz: CITIES.LONDON.tz, place: p || null,
-          sourceUrl: p ? p.sourceUrl : '', verifiedAt: p ? p.verifiedAt : null, priceMinor: s.node.price, currency: 'GBP', series: null, status: '', sourceVersion: 0, deadline: null,
+          sourceUrl: s.node.event ? s.node.event.sourceUrl : (p && p.vary && p.calendarUrl) || (p ? p.sourceUrl : ''),
+          note: p && p.vary ? `开放时间每天不同，出发前查官网日历：${p.calendarUrl || p.sourceUrl}` : p && p.unverified ? '开放时间待核实，出发前请查官网。' : null,
+          verifiedAt: p ? p.verifiedAt : null, priceMinor: s.node.spend && !s.node.price ? null : s.node.price, currency: 'GBP', series: null, status: '', sourceVersion: 0, deadline: null,
         };
       });
       const blob = new Blob([buildICS(evs)], { type: 'text/calendar;charset=utf-8' });
@@ -4252,7 +4269,7 @@
     res.stops.forEach((s, i) => {
       lines.push(`  ↓ ${legText(s.leg)}`);
       const cal = s.node.place && s.node.place.calendarUrl;
-      lines.push(`${i + 1}. ${clock(s.start)}–${clockNext(s.end)}  ${s.node.event ? s.node.name : placeLabel(s.node)}${s.meal === 'lunch' ? '（午饭）' : s.meal === 'dinner' ? '（晚饭）' : ''}${s.node.vary ? '（时间每天不同，以官网日历为准）' : ''}`);
+      lines.push(`${i + 1}. ${clockNext(s.start)}–${clockNext(s.end)}  ${s.node.event ? s.node.name : placeLabel(s.node)}${s.meal === 'lunch' ? '（午饭）' : s.meal === 'dinner' ? '（晚饭）' : ''}${s.node.vary ? '（时间每天不同，以官网日历为准）' : ''}`);
       if (cal && s.node.vary) lines.push(`   官网日历：${cal}`);
     });
     if (res.back) lines.push(`  ↓ ${legText(res.back)}，回到出发点`);
@@ -4375,15 +4392,15 @@
     if (n && P) sec.appendChild(h('p', { class: 'guidebox__now' }, liveEl(p, 'live--lg'), unverifiedBadge(p)));
     const facts = [];
     if (n) {
-      facts.push(h('dt', null, '建议时长'), h('dd', null, n.slots ? `约 ${durText(n.visitMin)}（含中场）` : `约 ${durText(n.visitMin)}`));
-      facts.push(h('dt', null, '费用'), h('dd', null, pence(n.price), g.priceNote ? h('span', { class: 'muted' }, ` · ${g.priceNote}`) : null));
+      facts.push(h('dt', null, '建议时长'), h('dd', null, n.slots && n.category === 'NIGHT' ? `约 ${durText(n.visitMin)}（含中场）` : `约 ${durText(n.visitMin)}`));
+      facts.push(h('dt', null, '费用'), h('dd', null, pence(n.price), g.priceNote && g.priceNote !== pence(n.price) ? h('span', { class: 'muted' }, ` · ${g.priceNote}`) : null));
       facts.push(h('dt', null, '室内/户外'), h('dd', null, INDOOR_ZH[n.indoor]));
       if (n.best.size) facts.push(h('dt', null, '最佳时段'), h('dd', null, Array.from(n.best).map((b) => BEST_ZH[b] || b).join('、')));
       facts.push(h('dt', null, '推荐度'), h('dd', null, h('span', { class: 'stars', 'aria-label': `${n.score} 分（满分 5）` }, '★'.repeat(n.score), h('span', { class: 'stars__off' }, '★'.repeat(5 - n.score))), n.score >= 5 ? ' 初访必去' : n.score === 4 ? ' 很值得' : ''));
     }
     if (p.calendarUrl) {
       facts.push(h('dt', null, '开放时间'), h('dd', null, extLink(p.calendarUrl, p.vary ? '官网日历（每天不同）' : '官网开放时间'),
-        h('span', { class: 'muted' }, p.vary ? ' · 下表是规划用的保守时段，出发前查当天时间' : ' · 个别日子有调整，以官网为准')));
+        h('span', { class: 'muted' }, p.vary ? (n && (n.hours || n.slots) ? ' · 下表是规划用的保守时段，出发前查当天时间' : ' · 按官网日历预约场次，不自动排进行程') : ' · 个别日子有调整，以官网为准')));
     }
     if (g.station) facts.push(h('dt', null, '交通'), h('dd', null, g.station));
     if (g.booking) facts.push(h('dt', null, '预约'), h('dd', null, g.booking));
@@ -4394,7 +4411,7 @@
     if (n && n.plan) {
       const from = h('button', { type: 'button', class: 'btn', 'data-fk': 'from:' + p.id }, icon('route'), h('span', null, '从这里出发规划'));
       from.addEventListener('click', () => planFrom(p));
-      sec.appendChild(h('div', { class: 'maplinks' }, pinButton(p), from));
+      sec.appendChild(h('div', { class: 'maplinks' }, n.hours || n.slots ? pinButton(p) : null, from));
     }
     return sec;
   }
@@ -4402,10 +4419,11 @@
     const P = TP();
     const n = p.node;
     const today = londonNow();
-    const rows = P.weekTable(n, today, null).map((x) => {
+    const days = Array.from({ length: 7 }, (_, i) => { const d = P.addDays(today, i); return { date: d, slots: P.slotsOn(n, d) }; });
+    const rows = days.map((x) => {
       const sun = sunFor(x.date);
       const iv = n.slots ? null : P.intervalsOn(n, x.date, sun);
-      const text = n.slots ? (x.slots.length ? x.slots.map((m) => clock(m)).join('、') + ' 开场' : '无场次') : ivText(iv);
+      const text = n.slots ? (x.slots.length ? x.slots.map((m) => clock(m)).join('、') + ' 开场' : '无场次') : iv == null && n.vary ? '见官网日历' : ivText(iv);
       const isToday = x.date.key === today.key;
       return h('tr', { class: isToday ? 'is-today' : null },
         h('th', { scope: 'row' }, `周${DOW_ZH[x.date.dow]}`, h('span', { class: 'muted' }, ` ${x.date.mo}/${x.date.d}`)),
@@ -4417,13 +4435,13 @@
         : n.hours ? '时间每天不同：表中是规划用的保守时段（官网各日里最短的），当天实际时间以官网日历为准'
           : '时间每天不同，需按官网日历预约场次，所以不自动排进行程');
     }
-    if (n.dates) notes.push(n.dates.to ? `只在 ${n.dates.from} 至 ${n.dates.to} 期间` : `${n.dates.from} 起开放`);
+    if (n.dates) notes.push(n.dates.to ? (n.dates.from <= today.key ? `开放至 ${n.dates.to}` : `只在 ${n.dates.from} 至 ${n.dates.to} 期间`) : `${n.dates.from} 起开放`);
     if (n.seasonal.length) notes.push(`季节性时间：${n.seasonal.map((s) => `${s.from.replace('-', '月')}日–${s.to.replace('-', '月')}日另有安排`).join('；')}（表中已按日期计算）`);
     if (n.closed.size) notes.push(`闭馆/休息日：${Array.from(n.closed).sort().map((x) => x.length === 5 ? x.replace('-', '月') + '日' : x).join('、')}`);
     if (n.lastEntry != null) notes.push(`最后入场为关门前 ${n.lastEntry} 分钟`);
     if (Array.from(n.hours ? n.hours.days : []).some((iv) => iv && iv.some((x) => x.dusk))) notes.push('“黄昏关门”按当天日落时间推算');
     return h('div', { class: 'week7' },
-      h('table', { class: 'week7__table' }, h('caption', { class: 'vh' }, '本周开放时间（伦敦当地时间）'), h('tbody', null, rows)),
+      h('table', { class: 'week7__table' }, h('caption', { class: 'vh' }, '未来 7 天开放时间（伦敦当地时间）'), h('tbody', null, rows)),
       notes.length ? h('p', { class: 'note' }, notes.join('。') + '。') : null);
   }
 
@@ -4610,7 +4628,9 @@
         paintGuideClock();
         paintNear();
         paintBar();
-        if (state.planRes && (state.planRes.shifted || state.planRes.empty)) schedulePlan(false);
+        const r = state.planRes;
+        const nowL = londonNow();
+        if (r && (r.shifted || r.empty || planDate().key !== r.date.key || (r.date.key === nowL.key && r.window[0] < nowL.min + 5))) schedulePlan(false);
       }
     }
   }

@@ -175,9 +175,9 @@
   function sunLocal(date, lat = 51.5074, lng = -0.1278) {
     const s = sunTimes(date, lat, lng);
     if (!s) return { rise: 420, set: 1080, dusk: 1100 };
-    const base = londonToUtc(date, 0);
-    const rise = Math.round((s.rise - base) / 60000);
-    const set = Math.round((s.set - base) / 60000);
+    const loc = (ms) => { const p = londonParts(ms); return p.min + (p.key > date.key ? 1440 : p.key < date.key ? -1440 : 0); };
+    const rise = loc(s.rise);
+    const set = loc(s.set);
     return { rise, set, dusk: set + 15 };
   }
 
@@ -208,9 +208,11 @@
     if (hours && hours.error) errors.push(`hours: ${hours.error}`);
     const seasonal = [];
     for (const s of Array.isArray(g.seasonal) ? g.seasonal : []) {
-      const hs = parseHours(s && s.hours);
-      if (!s || !mdKey(s.from) || !mdKey(s.to) || !hs || hs.error) { errors.push(`seasonal: ${JSON.stringify(s)}`); continue; }
-      seasonal.push({ from: s.from, to: s.to, hours: hs });
+      // a window overrides the hours, the show times, or both
+      const hs = s && s.hours != null ? parseHours(s.hours) : null;
+      const ss = s && s.slots != null ? parseSlots(s.slots) : null;
+      if (!s || !mdKey(s.from) || !mdKey(s.to) || (!hs && !ss) || (hs && hs.error) || (ss && ss.error)) { errors.push(`seasonal: ${JSON.stringify(s)}`); continue; }
+      seasonal.push({ from: s.from, to: s.to, hours: hs, slots: ss });
     }
     const slots = parseSlots(g.slots);
     if (slots && slots.error) errors.push(`slots: ${slots.error}`);
@@ -241,20 +243,24 @@
       meal: base.category === 'FOOD' && g.meal !== false, // false for coffee bars and tea rooms
       spend: base.category === 'FOOD' || /人均/.test(g.priceNote || ''), // price is food & drink per head, not a ticket
       vary: g.hoursVary === true, // hours/slots change day to day: what is here is a cautious typical window
+      xmas: g.xmasOpen === true, // open on Christmas Day, when almost everything else is shut
       errors,
     };
   }
 
-  /** Is the node running on this date at all (date range, closure dates)? */
+  /** Open on Christmas Day: places open round the clock, and those the data marks as open that day (the Royal Parks). */
+  const xmasOk = (node) => !!(node.hours && node.hours.always) || node.xmas === true;
+  /** Is the node running on this date at all (date range, closure dates, Christmas Day)? */
   function runsOn(node, date) {
     if (node.dates && (date.key < node.dates.from || (node.dates.to && date.key > node.dates.to))) return false;
     if (node.closed.has(date.md) || node.closed.has(date.key)) return false;
+    if (date.md === '12-25' && !xmasOk(node)) return false;
     return true;
   }
   /** Hours in force on a date (seasonal overrides win; the last matching window wins). */
   function hoursFor(node, date) {
     let h = node.hours;
-    for (const s of node.seasonal) if (inMdWindow(date.md, s.from, s.to)) h = s.hours;
+    for (const s of node.seasonal) if (s.hours && inMdWindow(date.md, s.from, s.to)) h = s.hours;
     return h;
   }
   /**
@@ -272,7 +278,9 @@
   }
   function slotsOn(node, date) {
     if (!node.slots || !runsOn(node, date)) return [];
-    return node.slots.days[date.dow].slice();
+    let sl = node.slots;
+    for (const s of node.seasonal) if (s.slots && inMdWindow(date.md, s.from, s.to)) sl = s.slots;
+    return sl.days[date.dow].slice();
   }
   /** Weekly table: 7 × [[open, close]] / null (unknown), using the hours in force on `date`. */
   function weekTable(node, date, sun) {
@@ -361,7 +369,7 @@
   const DINNER = [17 * 60 + 30, 20 * 60 + 30];
   const TEA = [14 * 60 + 30, 17 * 60 + 30];
   const MEAL_BONUS = 14;
-  const TRAVEL_COST = 0.05; // value lost per minute on the move, so compact routes win ties
+  const TRAVEL_COST = 0.12; // value lost per minute on the move: a 25-min Tube ride must buy clearly more
 
   function inRange(m, r) { return m >= r[0] && m <= r[1]; }
   /** Sunset light: from an hour before sunset to twenty minutes after. */
@@ -403,17 +411,26 @@
       if (!n.plan && !isPinned && !n.event) continue;
       const w = n.event ? (weights.EVENT || 0) : weights[n.category] == null ? 1 : weights[n.category];
       if (w <= 0 && !isPinned) continue;
-      if (opts.freeOnly && n.price != null && n.price > 0 && n.category !== 'FOOD' && !isPinned) continue;
+      // free only: known free (or tagged free with no fixed price); meals are allowed
+      if (opts.freeOnly && n.price !== 0 && !(n.price == null && n.tags.has('free')) && n.category !== 'FOOD' && !isPinned) continue;
       if (n.tags.has('daytrip') && span < 300 && !isPinned) continue;
       const iv = n.slots ? null : intervalsOn(n, date, sun);
       const slots = n.slots ? slotsOn(n, date) : null;
       const dur = Math.max(15, Math.round(n.visitMin * (n.slots || n.event ? 1 : pace.visit)));
       const node = { n, w, iv, slots, dur, pinned: isPinned, idx: pool.length };
       let why = '';
-      if (xmas && !(n.hours && n.hours.always)) why = '圣诞节当天关闭';
-      else if (slots && !slots.some((s) => s - 15 >= t0 && s + Math.min(dur, 60) <= t1)) why = slots.length ? '所选时段内没有场次' : '这一天没有场次';
-      else if (!slots && iv == null) why = n.vary ? '开放时间每天不同，先在官网日历查好当天时间' : '开放时间未知';
-      else if (!slots && !iv.some(([o, c]) => Math.min(c, t1) - Math.max(o, t0) >= Math.min(dur * 0.7, 45))) why = iv.length ? '所选时段内不开放' : '这一天不开放';
+      const pre = n.event ? 10 : 15;
+      const fitsIv = ([o, c]) => {
+        const s = Math.max(o, t0);
+        return s <= (n.lastEntry != null ? c - n.lastEntry : c) && Math.min(c, t1) - s >= Math.max(15, dur * 0.7);
+      };
+      if (xmas && !xmasOk(n)) why = '圣诞节当天关闭';
+      else if (slots && !slots.some((s) => s - pre >= t0 && s + dur <= t1)) {
+        why = !slots.length ? '这一天没有场次' : slots.some((s) => s - pre >= t0 && s < t1) ? `所选时段结束前看不完（约 ${dur} 分钟），把时间条往后拉` : '所选时段内没有场次';
+      } else if (!slots && iv == null) why = n.vary ? '开放时间每天不同，先在官网日历查好当天时间' : '开放时间未知';
+      else if (!slots && !iv.some(fitsIv)) {
+        why = !iv.length ? '这一天不开放' : iv.some(([o, c]) => Math.min(c, t1) > Math.max(o, t0)) ? '所选时段内来不及游览（开放时间或最后入场不够）' : '所选时段内不开放';
+      }
       if (!why) {
         const out = travel(opts.start, n, legOpt).min;
         const back = opts.end ? travel(n, opts.end, legOpt).min : 0;
@@ -443,7 +460,7 @@
         for (const s of c.slots) {
           const pre = c.n.event ? 10 : 15;
           if (s - pre < arrive) continue;
-          if (s - pre - arrive > 75) return null; // too long a wait for the next performance
+          if (s - pre - arrive > 75 && !c.pinned) return null; // too long a wait for the next performance
           return { start: s - pre, end: s + c.dur, slot: s };
         }
         return null;
@@ -454,7 +471,7 @@
         if (s > latest) continue;
         const e = Math.min(s + c.dur, cl);
         if (e - s < Math.max(15, Math.min(c.dur, c.dur * 0.7))) continue;
-        if (s - arrive > 50) return null; // don't stand outside for an hour
+        if (s - arrive > 50 && !c.pinned) return null; // don't stand outside for an hour
         return { start: s, end: e };
       }
       return null;
@@ -477,13 +494,14 @@
       if (n.category === 'NIGHT' && !c.slots && s < 16 * 60) f *= 0.55;
       // a ticketed matinée eats an afternoon: only when nightlife was asked for
       if (n.category === 'NIGHT' && c.slots && s < 17 * 60 && !(c.w > 1)) f *= 0.5;
-      const dark = s > sun.set + 30 && !n.best.has('night') && !n.best.has('evening');
-      if (dark && n.category === 'NATURE') f *= 0.3;
+      const dark = Math.max(0, e - Math.max(s, sun.set + 30)) >= 0.5 * Math.max(1, e - s) && !n.best.has('night') && !n.best.has('evening');
+      if (dark && n.category === 'NATURE') f *= 0.12; // a park in the dark is not worth the trip
       else if (dark && (n.indoor === 'out' || n.category === 'STROLL')) f *= 0.6;
       if (n.tags.has('tea') && inRange(s, TEA)) f *= 1.3;
       return f;
     }
 
+    const isShow = (x) => !!x.slots && x.n.category === 'NIGHT' && !x.n.event;
     /** Walk the route: times, feasibility, value. null when infeasible. */
     function evaluate(route) {
       let t = t0;
@@ -495,9 +513,12 @@
       let snack = null; // the last food stop that was not a meal, in case a meal follows straight after
       const cat = new Map();
       const stops = [];
+      // at most one ticketed show unless more are must-go
+      let shows = route.some((i) => cands[i].pinned && isShow(cands[i])) ? 1 : 0;
       for (let k = 0; k < route.length; k += 1) {
         const c = cands[route[k]];
         const lg = leg(at, c.idx);
+        if (xmas && lg.min > 45) return null; // on foot all day: no hour-long walks
         const arrive = t + lg.min + (k ? pace.gap : 0);
         const win = fitWindow(c, arrive);
         if (!win) return null;
@@ -506,6 +527,9 @@
         let v = SCORE_VALUE[c.n.score] * c.w * timeFit(c, win.start, win.end) * Math.min(2.2, Math.max(0.45, Math.pow(stay / 60, 0.75)));
         if (opts.rainy) v *= c.n.indoor === 'in' ? 1.35 : c.n.indoor === 'mixed' ? 0.9 : 0.4;
         if (opts.kids && c.n.tags.has('kids')) v *= 1.4;
+        if (opts.kids && (c.n.tags.has('pub') || c.n.tags.has('bar'))) v *= 0.2;
+        if (isShow(c) && !c.pinned) { if (shows) v *= 0.1; shows += 1; }
+        if (c.n.event) v *= 1.6; // a one-off today beats a museum that is there every day
         let meal = null;
         if (c.n.category === 'FOOD') {
           const light = !c.n.meal;
@@ -517,6 +541,7 @@
             if (win.start - mealEnd < 150) v *= 0.3; // just ate
           }
           if (meal) {
+            v -= 0.6 * Math.max(0, lg.min - 10); // eat near the route, not across town
             mealEnd = win.end;
             if (snack && win.start - snack.end < 150) value -= snack.v * 0.7; // a food stop right before a meal
             snack = null;
@@ -563,16 +588,26 @@
         for (const i of cur.route) used.add(i);
       }
     }
-    /** Reverse segments while that shortens the day without losing value. */
+    /** Reverse segments, or move one stop elsewhere, while that adds value or shortens the day without losing value. */
     function twoOpt(cur) {
+      const gain = (ev) => ev && (ev.value > cur.value + 1e-6 || (ev.value >= cur.value - 1e-6 && ev.endT < cur.endT - 0.5));
       let changed = true;
       while (changed) {
         changed = false;
         for (let i = 0; i < cur.route.length - 1; i += 1) {
           for (let j = i + 1; j < cur.route.length; j += 1) {
-            const r = cur.route.slice(0, i).concat(cur.route.slice(i, j + 1).reverse(), cur.route.slice(j + 1));
+            const ev = evaluate(cur.route.slice(0, i).concat(cur.route.slice(i, j + 1).reverse(), cur.route.slice(j + 1)));
+            if (gain(ev)) { cur = ev; changed = true; }
+          }
+        }
+        // relocate: e.g. the palace next to the guard change instead of a walk back later
+        for (let i = 0; i < cur.route.length; i += 1) {
+          for (let j = 0; j < cur.route.length; j += 1) {
+            if (i === j) continue;
+            const r = cur.route.slice();
+            r.splice(j, 0, r.splice(i, 1)[0]);
             const ev = evaluate(r);
-            if (ev && ev.value >= cur.value - 1e-6 && ev.endT < cur.endT - 0.5) { cur = ev; changed = true; }
+            if (gain(ev)) { cur = ev; changed = true; }
           }
         }
       }
@@ -586,12 +621,13 @@
     let cur = empty;
     const pins = cands.filter((c) => c.pinned).sort((a, b) => b.n.score - a.n.score || b.dur - a.dur);
     for (const c of pins) {
+      const mealPin = meals && c.n.meal;
       let best = null;
       for (let pos = 0; pos <= cur.route.length; pos += 1) {
         const ev = evaluate(cur.route.slice(0, pos).concat(c.idx, cur.route.slice(pos)));
-        if (ev && (!best || ev.endT < best.endT)) best = ev;
+        if (ev && (!best || (mealPin ? better(ev, best) : ev.endT < best.endT))) best = ev;
       }
-      if (best) cur = best; else unplaced.push({ node: c.n, why: '与其他必去地点的时间冲突，排不进去' });
+      if (best) cur = best;
     }
     cur = twoOpt(improve(cur));
     let best = cur;
@@ -607,6 +643,11 @@
       if (!base) continue;
       const cand = twoOpt(improve(base));
       if (better(cand, best)) best = cand;
+    }
+    const placed = new Set(best.route);
+    for (const c of pins) {
+      if (placed.has(c.idx)) continue;
+      unplaced.push({ node: c.n, why: evaluate([c.idx]) ? '与其他必去地点的时间冲突，排不进去' : '所选时段内放不下（开放时间、演出结束时间或路程不够）' });
     }
     return finish(best, unplaced);
 
@@ -626,7 +667,7 @@
         visitMin += s.end - s.start;
         waitMin += s.wait;
         const n = s.c.n;
-        if (n.spend) { if (n.price == null) foodKnown = false; else food += n.price; } else if (n.price == null) costKnown = false; else cost += n.price;
+        if (n.spend) { if (!n.price) foodKnown = false; else food += n.price; } else if (n.price == null) costKnown = false; else cost += n.price;
       }
       const needs = {
         lunch: !!opts.meals && t0 <= LUNCH[0] && t1 >= LUNCH[1] + 45,
@@ -662,7 +703,7 @@
     for (const n of opts.nodes || []) {
       if (!n.plan || n.lat == null) continue;
       if (opts.excluded && opts.excluded.has(n.id)) continue;
-      const tr = travel(opts.here, n);
+      const tr = travel(opts.here, n, now.md === '12-25' ? { walkMax: 1e9 } : undefined); // no Tube on Christmas Day
       if (tr.min > (opts.maxMin || 45)) continue;
       const st = statusAt(n, now, sun, sunY);
       const arrive = now.min + tr.min;
@@ -689,7 +730,7 @@
       if (opts.rainy) v *= n.indoor === 'in' ? 1.4 : n.indoor === 'out' ? 0.35 : 0.9;
       if (kind === 'soon') v *= 0.7;
       if (kind === 'open' && room < 75 && st.left < DAY_MIN) reasons.push('closing');
-      if (n.price === 0) reasons.push('free');
+      if (n.price === 0 && !n.spend) reasons.push('free');
       const score = v / (1 + tr.min / 12);
       out.push({ node: n, travel: tr, status: st, kind, score, reasons, room });
     }
@@ -699,7 +740,7 @@
 
   const api = {
     TZ, DAY_CODES, BEST_RANGES, SCORE_VALUE, PACE, LUNCH, DINNER,
-    parseHours, parseSlots, compilePlace, intervalsOn, slotsOn, weekTable, statusAt, runsOn,
+    parseHours, parseSlots, compilePlace, intervalsOn, slotsOn, weekTable, statusAt, runsOn, xmasOk,
     londonParts, londonToUtc, parseDateKey, addDays, dateInfo, sunTimes, sunLocal,
     haversineKm, travel, plan, suggest, hashStr,
   };

@@ -106,13 +106,45 @@ test('held places are not planned', () => {
   for (const r of guide.routes) for (const id of r.stops) assert.ok(!held.has(id), `${r.id} uses held ${id}`);
 });
 
-test('Christmas Day: only open-air places, on foot', () => {
+test('Christmas Day: only open-air places, on foot — in the plan and in near me', () => {
   const r = plan('2026-12-25', [600, 1080]);
   assert.ok(r.xmas);
+  assert.ok(r.stops.length >= 3);
   for (const s of r.stops) {
-    assert.ok(s.node.hours && s.node.hours.always, s.node.id);
+    assert.ok(P.xmasOk(s.node), s.node.id);
     assert.strictEqual(s.leg.mode, 'walk');
+    assert.ok(s.leg.min <= 45, `${s.node.id} ${s.leg.min} min`);
   }
+  const now = Object.assign({}, P.parseDateKey('2026-12-25'), { min: 11 * 60 });
+  const near = P.suggest({ nodes, now, here: START });
+  assert.ok(near.length >= 3);
+  for (const x of near) { assert.ok(P.xmasOk(x.node), x.node.id); assert.strictEqual(x.travel.mode, 'walk'); }
+});
+
+test('pins: a placed must-go is never also reported missing; a lone pin gets the true reason', () => {
+  for (const r of guide.routes) {
+    for (const day of ['2026-10-10', '2026-10-14', '2026-11-12', '2026-12-05']) {
+      const res = plan(day, r.window, { pinned: new Set(r.stops), start: START });
+      const placed = new Set(res.stops.map((s) => s.node.id));
+      for (const u of res.unplaced) assert.ok(!placed.has(u.node.id), `${r.id} ${day}: ${u.node.id}`);
+    }
+  }
+  const les = plan('2026-10-12', [600, 1260], { pinned: new Set(['london-show-les-miserables']) });
+  const u = les.unplaced.find((x) => x.node.id === 'london-show-les-miserables');
+  assert.ok(u && /看不完|放不下/.test(u.why), u && u.why);
+});
+
+test('the park is open all day (the pelican feeding is only a tip), and free only means free', () => {
+  const sjp = nodes.find((x) => x.id === 'london-st-jamess-park');
+  const st = P.statusAt(sjp, Object.assign({}, P.parseDateKey('2026-10-08'), { min: 16 * 60 }), P.sunLocal(P.parseDateKey('2026-10-08')));
+  assert.strictEqual(st.state, 'open');
+  const r = plan('2026-12-05', [1050, 1410], { freeOnly: true });
+  for (const s of r.stops) if (!s.node.spend) assert.ok(s.node.price === 0 || (s.node.price == null && s.node.tags.has('free')), s.node.id);
+});
+
+test('sun times are wall-clock minutes on the clock-change day', () => {
+  const sun = P.sunLocal(P.parseDateKey('2026-10-25'));
+  assert.ok(Math.abs(sun.set - (16 * 60 + 47)) <= 4, hm(sun.set));
 });
 
 test('near me suggests open places, nearest-and-best first', () => {
