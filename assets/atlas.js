@@ -4106,7 +4106,7 @@
     const mid = (s.start + s.end) / 2;
     if (n.best.has('sunset') && mid >= res.sun.set - 60 && mid <= res.sun.set + 20) out.push('赶上日落');
     if (!s.pinned && n.score >= 5) out.push('必看');
-    if (n.price === 0 && !n.spend) out.push('免费');
+    if (n.price === 0 && !n.spend && n.category !== 'SHOP') out.push('免费'); // shops are free to walk into anyway
     if (state.plan.rainy && n.indoor === 'in') out.push('室内');
     if (state.plan.kids && n.tags.has('kids')) out.push('适合孩子');
     if (s.slot != null) out.push(`提前 ${s.slot - s.start} 分钟到场`);
