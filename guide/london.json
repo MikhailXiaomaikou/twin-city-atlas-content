@@ -5,7 +5,7 @@
  "city": "LONDON",
  "coordinateSystem": "WGS84",
  "updated": "2026-10-07",
- "note": "网页版《双城图志》的伦敦攻略层：新增地点（places）与对 content.json 已有伦敦地点的游玩补充（overlays，按 id 对应）。时间为伦敦当地时间；hours 为 OpenStreetMap opening_hours 的子集。unverified 为 true 的条目开放时间未能确认（来源互相矛盾、按日变化或尚未官宣，原因见 verifyNote），网页上标“待核实”。坐标多为按公开资料估计的建筑概略位置（约 ±50–150 m）。",
+ "note": "网页版《双城图志》的伦敦攻略层：新增地点（places）与对 content.json 已有伦敦地点的游玩补充（overlays，按 id 对应）。时间为伦敦当地时间；hours 为 OpenStreetMap opening_hours 的子集。unverified 为 true 的条目开放时间未能确认（来源互相矛盾，原因见 verifyNote），网页上标“待核实”。hoursVary 为 true 的条目开放时间每天不同，hours 为规划用的保守时段，calendarUrl 为官网日历；hold 有值的条目暂缓显示（如日期尚未官宣），网页不读取。坐标多为按公开资料估计的建筑概略位置（约 ±50–150 m）。",
  "places": [
   {
    "id": "london-westminster-abbey",
@@ -1344,7 +1344,8 @@
     "https://www.attractiontickets.com/en/london-attraction-tickets/lastminutecom-london-eye-admission-ticket/lastminutecom-london-eye"
    ],
    "verifyNote": "官网页面无法直接打开，以下据搜索结果摘要。官网确认：冬季平日通常 11:00–18:00，周末及学校假期常延长到 10:00–20:30；所列关门时间即最后一圈登舱时间（故 lastEntry 记 0）；圣诞节与 1 月年度维护停运（2026 年为 1/5–1/18）。各日期段（11/3–12/18 为 11:00–18:00；10/25–11/2 与 12/19–12/30 为 10:00–20:30；12/24 为 10:00–17:30；12/31 为 10:00–15:00）来自转售商 london-tickets.co.uk 抄录的日历，日期与 2025 年校历吻合，2026 年期中假期（约 10/24–11/1）可能前后差一天；官网博客称周末一般 10:00–20:30，与该日历不一致，未核实。2027 年维护期 1/11–1/24 只见于转售商 attractiontickets.com。1 月 1 日及 1 月上旬时段未核实。成人 £29 起据官网购票页摘要。",
-   "verified": "2026-10-07"
+   "verified": "2026-10-07",
+   "calendarUrl": "https://www.londoneye.com/plan-your-visit/before-you-visit/opening-hours/"
   },
   {
    "id": "london-the-view-from-the-shard",
@@ -1940,9 +1941,10 @@
     "https://www.visitsealife.com/london/tickets-prices/ways-to-visit/multi-attractions-tickets/",
     "https://www.visitsealife.com/london/plan-your-visit/before-you-visit/how-do-i-book-a-timeslot/"
    ],
-   "verifyNote": "据官网检索摘要（2026-10-07 检索）：官网开放时间日历显示 2026 年 10 月初多数日子 10:00–17:00、个别日子更晚（有一天到 19:00），最后入场为闭馆前 1 小时；另一购票页快照为 9:30–19:00、最后入场 18:00（日期不明），说明时间逐日变化，hours 仅为 10 月初的常规值，10 月底期中假、11 月–1 月及圣诞前后的具体时间未核实。圣诞节（12/25）是否闭馆本轮未查到，closed 仍为 null。票价据官网 tickets-prices 与购票页：标准票成人在线 £28 起、现场 £39 起，儿童 £25/£35，2 岁以下免费；2026 年秋季 Anytime 日历显示成人原价 £44、部分日期 £38.50，与列价吻合；但检索工具提示其中一个首页快照约 18 个月前，个别价格可能已变。地址、坐标沿用既有资料，本轮未复核。",
+   "verifyNote": "开放时间每天不同：hours 是规划用的保守时段（取官网各日里最短的），当天实际时间以官网日历为准。据官网检索摘要（2026-10-07 检索）：官网开放时间日历显示 2026 年 10 月初多数日子 10:00–17:00、个别日子更晚（有一天到 19:00），最后入场为闭馆前 1 小时；另一购票页快照为 9:30–19:00、最后入场 18:00（日期不明），说明时间逐日变化，hours 仅为 10 月初的常规值，10 月底期中假、11 月–1 月及圣诞前后的具体时间未核实。圣诞节（12/25）是否闭馆本轮未查到，closed 仍为 null。票价据官网 tickets-prices 与购票页：标准票成人在线 £28 起、现场 £39 起，儿童 £25/£35，2 岁以下免费；2026 年秋季 Anytime 日历显示成人原价 £44、部分日期 £38.50，与列价吻合；但检索工具提示其中一个首页快照约 18 个月前，个别价格可能已变。地址、坐标沿用既有资料，本轮未复核。",
    "verified": "2026-10-07",
-   "unverified": true
+   "hoursVary": true,
+   "calendarUrl": "https://www.visitsealife.com/london/plan-your-visit/before-you-visit/opening-hours/"
   },
   {
    "id": "london-the-london-dungeon",
@@ -1997,9 +1999,10 @@
     "https://ticketing.thedungeons.com/en/london/tickets/london-dungeon-eye",
     "https://www.visitsealife.com/london/tickets-prices/ways-to-visit/multi-attractions-tickets/"
    ],
-   "verifyNote": "据官网检索摘要（2026-10-07 检索）：官网称除圣诞节外全年每天开放、开放时间按日期变化；官网时间表数据显示 2026 年 9 月底至 10 月初平日 11:00–16:00、周六 10:00–18:00、周日 10:00–16:00，但不同页面数据不一致，hours 仅为 10 月初常规值，10 月底期中假/万圣节、圣诞假期及 1 月的时间未核实；最后入场/最后时段未查到，lastEntry 仍为 null。票价据官网购票页：标准票成人在线 £27 起、现场 £35 起，儿童（5–15）£22/£29，Anytime £35/£43，VIP £50/£60，地牢 + 伦敦眼 £49 起；2026-06-25 至 09-01 的夏季优惠已结束。年龄规定（建议 12+、5 岁以下不得入场、15 岁及以下须 18+ 成人陪同）、Drop Dead 身高 1.4 米、参观约 1.5–2 小时、轮椅时段须预约均据官网 FAQ。检索工具提示部分页面缓存较旧（个别超两年），出行前请在购票页按日期复核。地址、坐标沿用既有资料，本轮未复核。",
+   "verifyNote": "开放时间每天不同：hours 是规划用的保守时段（取官网各日里最短的），当天实际时间以官网日历为准。据官网检索摘要（2026-10-07 检索）：官网称除圣诞节外全年每天开放、开放时间按日期变化；官网时间表数据显示 2026 年 9 月底至 10 月初平日 11:00–16:00、周六 10:00–18:00、周日 10:00–16:00，但不同页面数据不一致，hours 仅为 10 月初常规值，10 月底期中假/万圣节、圣诞假期及 1 月的时间未核实；最后入场/最后时段未查到，lastEntry 仍为 null。票价据官网购票页：标准票成人在线 £27 起、现场 £35 起，儿童（5–15）£22/£29，Anytime £35/£43，VIP £50/£60，地牢 + 伦敦眼 £49 起；2026-06-25 至 09-01 的夏季优惠已结束。年龄规定（建议 12+、5 岁以下不得入场、15 岁及以下须 18+ 成人陪同）、Drop Dead 身高 1.4 米、参观约 1.5–2 小时、轮椅时段须预约均据官网 FAQ。检索工具提示部分页面缓存较旧（个别超两年），出行前请在购票页按日期复核。地址、坐标沿用既有资料，本轮未复核。",
    "verified": "2026-10-07",
-   "unverified": true
+   "hoursVary": true,
+   "calendarUrl": "https://www.thedungeons.com/london/plan-your-visit/before-you-visit/opening-hours/"
   },
   {
    "id": "london-imperial-war-museum",
@@ -2671,7 +2674,7 @@
    "address": "Marylebone Road, London NW1 5LR",
    "region": "Marylebone",
    "station": "Baker Street 站（Bakerloo、Circle、Hammersmith & City、Jubilee、Metropolitan 线）步行约 2 分钟",
-   "hours": null,
+   "hours": "Mo-Su 10:00-15:00",
    "seasonal": null,
    "closed": [
     "12-25"
@@ -2702,9 +2705,10 @@
     "https://www.madametussauds.com/london/",
     "https://ticketing.madametussauds.com/london/en/tickets/madame-tussauds-london-standard-ticket"
    ],
-   "verifyNote": "票价据官网 Tickets & Prices 页（2026-10 检索摘要）：标准票成人（16+）在线提前 £27 起、现场 £39；Flexi Fast Track 在线 £37 起、现场 £49；与 London Eye 联票 £49 起。冲突：官网首页 FAQ 称在线 £29 起、当天约 £39–42，购票日历部分时段显示 £31、£37，属动态定价，price 取票价页的起价 £27。开放时间据官网 Opening Times 页：所列 2026 年 10 月初日期为 10:00–18:00、最后入场 16:00，但其他日期显示 10:00–16:00、10:00–15:00（均写“最后入场”），官网称时间随客流调整，无固定规律，故 hours 仍为 null、lastEntry 仍为 null。闭馆日 12-25 沿用原值（惯例推断），本次未找到官网说明，未核实；12/24、12/26、1/1 安排未核实。地址与坐标未复核。",
+   "verifyNote": "开放时间每天不同：官网所列各日为 10:00 开门、15:00–18:00 结束不等，hours 取最短的 10:00–15:00 供规划，当天实际时间以官网 Opening Times 日历为准。票价据官网 Tickets & Prices 页（2026-10 检索摘要）：标准票成人（16+）在线提前 £27 起、现场 £39；Flexi Fast Track 在线 £37 起、现场 £49；与 London Eye 联票 £49 起。冲突：官网首页 FAQ 称在线 £29 起、当天约 £39–42，购票日历部分时段显示 £31、£37，属动态定价，price 取票价页的起价 £27。开放时间据官网 Opening Times 页：所列 2026 年 10 月初日期为 10:00–18:00、最后入场 16:00，但其他日期显示 10:00–16:00、10:00–15:00（均写“最后入场”），官网称时间随客流调整，无固定规律，故 hours 仍为 null、lastEntry 仍为 null。闭馆日 12-25 沿用原值（惯例推断），本次未找到官网说明，未核实；12/24、12/26、1/1 安排未核实。地址与坐标未复核。",
    "verified": "2026-10-07",
-   "unverified": true
+   "hoursVary": true,
+   "calendarUrl": "https://www.madametussauds.com/london/plan-your-visit/before-you-visit/opening-hours/"
   },
   {
    "id": "london-design-museum",
@@ -3388,7 +3392,8 @@
     "https://ornc.org/whats-on/painted-hall-talks/"
    ],
    "verifyNote": "彩绘厅、礼拜堂与游客中心每日 10:00–17:00（最后入场 16:30）、庭院 08:00–23:00、成人 £19、优惠 £9.50、每月首个周日 £5 据 ornc.org 官网 Opening times、购票页与 First Sundays 页（搜索摘要）。未能核实的有：圣诞节闭馆日（既往为 12 月 24–26 日，故 closed 设为 null）、儿童票价（既往 16 岁以下免费）、无障碍电梯现状。原因是本批次联网搜索额度中途用尽，官网也无法直接访问。坐标为估计值，地址与取景信息为既往知识。",
-   "verified": "2026-10-07"
+   "verified": "2026-10-07",
+   "calendarUrl": "https://ornc.org/plan-a-visit/opening-times/"
   },
   {
    "id": "london-greenwich-market",
@@ -3966,9 +3971,10 @@
     "https://www.dennissevershouse.co.uk/event/dennis-severs-tour",
     "https://checkout.dennissevershouse.co.uk/"
    ],
-   "verifyNote": "2026-10-07 经官网搜索结果核实：首页圣诞栏目称 2026/11/20–2027/1/10 的门票见日历；圣诞 Silent Night 结账页全价 £26.50（结构化数据中有 2026/11/20 18:45 场次），常规 Silent Night Visit £25+£1.50 手续费；日历页列 Relaxed Day Visit £16、Armchair Concerts £38、Dennis Severs' Tour £75（+£1.75），圣诞导览 £80（80 分钟+问答、限 7 人、12 岁以上）。官网写明须网上预约、有余票时门口可买、票不退不换、迟到不入场、禁止拍照摄像、无洗手间、无轮椅通道，地址 18 Folgate Street, E1 6BX 无误。未能确认：2026 年 10 月至 11 月中旬的开放日与时段（日历快照仅见往期 9 月日场 12:00–15:15、6 月 12:00–16:15，另有 18:00、20:00 夜场，均为已过日期），圣诞季完整场次表及 12/24–26、1/1 是否开放均未核实，故 hours、slots 仍为 null；一份 2025 年 9 月的旧结账记录中 Relaxed Day Visit 价格与日历页不同，票价因类型而异，price 保持 null，请以结账页为准。官网与日历页本轮无法直接打开（WebFetch 被拦截）。坐标仍为估计值",
+   "verifyNote": "开放日与场次每天不同，须按官网日历预约，故不自动排入行程；可在官网日历订好场次后再规划。2026-10-07 经官网搜索结果核实：首页圣诞栏目称 2026/11/20–2027/1/10 的门票见日历；圣诞 Silent Night 结账页全价 £26.50（结构化数据中有 2026/11/20 18:45 场次），常规 Silent Night Visit £25+£1.50 手续费；日历页列 Relaxed Day Visit £16、Armchair Concerts £38、Dennis Severs' Tour £75（+£1.75），圣诞导览 £80（80 分钟+问答、限 7 人、12 岁以上）。官网写明须网上预约、有余票时门口可买、票不退不换、迟到不入场、禁止拍照摄像、无洗手间、无轮椅通道，地址 18 Folgate Street, E1 6BX 无误。未能确认：2026 年 10 月至 11 月中旬的开放日与时段（日历快照仅见往期 9 月日场 12:00–15:15、6 月 12:00–16:15，另有 18:00、20:00 夜场，均为已过日期），圣诞季完整场次表及 12/24–26、1/1 是否开放均未核实，故 hours、slots 仍为 null；一份 2025 年 9 月的旧结账记录中 Relaxed Day Visit 价格与日历页不同，票价因类型而异，price 保持 null，请以结账页为准。官网与日历页本轮无法直接打开（WebFetch 被拦截）。坐标仍为估计值",
    "verified": "2026-10-07",
-   "unverified": true
+   "hoursVary": true,
+   "calendarUrl": "https://www.dennissevershouse.co.uk/calendar"
   },
   {
    "id": "london-whitechapel-gallery",
@@ -5077,7 +5083,7 @@
    "address": "Studio Tour Drive, Leavesden, Hertfordshire WD25 7LR",
    "region": "Leavesden",
    "station": "从 Euston 乘火车到 Watford Junction（约 20 分钟），出站转官方接驳巴士约 15 分钟到影城（凭当日门票或预订确认上车；09:20 起至少每 30 分钟一班，首场为 09:00 的日子 08:15 起加开）",
-   "hours": null,
+   "hours": "Mo-Su 10:00-19:30",
    "seasonal": null,
    "closed": [
     "12-25"
@@ -5103,6 +5109,7 @@
    "booking": "必须提前在官网预订时段票，现场不售票",
    "sourceUrl": "https://www.wbstudiotour.co.uk/tickets/",
    "sources": [
+    "https://www.wbstudiotour.co.uk/opening-times/",
     "https://www.wbstudiotour.co.uk/tickets/",
     "https://www.wbstudiotour.co.uk/getting-here/",
     "https://www.wbstudiotour.co.uk/plan-your-visit/visit-information/",
@@ -5113,9 +5120,10 @@
     "https://www.london-tickets.co.uk/da/warner-bros-studio-tour-london/harry-potter-studio-events/",
     "https://thebettervacation.com/london/opening-hours/amp/"
    ],
-   "verifyNote": "票价据官网 Tickets 页（2026-10 检索摘要）：成人（16+）2026 年 £58.50、2027 年 £61.00，儿童（5–15）2026 年 £47，家庭票 £188，4 岁以下与陪护免费；官网 Contact 页称票售至 2026-12-31，Tickets 页称至 2027-12-31，两处不一。开放时间：官网称全年时间不同、需查日历，偶因维护或换布景闭馆；官网日历未标日期的快照显示 11 月底–12 月初某日首场 10:00、末场 17:00、闭馆 21:00，另一日首场 09:00、末场 18:30、闭馆 22:00；Visit London 称首场 09:00、末场 16:00–18:30 视季节而定。无固定规律，hours 仍为 null。接驳巴士据官网 Getting Here 页：约 15 分钟，09:20 起至少每 30 分钟一班（首场 09:00 时 08:15 起加开），需向保安出示当日门票或预订确认，末班回程在闭馆时发车；检索摘要称车费含在门票内，但未见原文逐字，是否另收费未确认，已去掉“车费另付”的说法。闭馆：12-25 据第三方指南（thebettervacation，称 25 日闭馆、26 日偶尔闭馆），官网 2026 年 12 月日历未能看到，12-26、1/1 未核实。Hogwarts in the Snow 2026–27 日期 11/14–1/17 据 London Tickets 列表，官网 festive reception 页确认 2026-11-14 起圣诞布置。",
+   "verifyNote": "开放时间每天不同：首场 09:00–10:00、末场约 16:00–18:30，hours 取 10:00 起、19:30 前结束（末场 16:00 的日子按 4 小时游览推算）供规划，当天实际时间以官网 Opening Times 日历为准。票价据官网 Tickets 页（2026-10 检索摘要）：成人（16+）2026 年 £58.50、2027 年 £61.00，儿童（5–15）2026 年 £47，家庭票 £188，4 岁以下与陪护免费；官网 Contact 页称票售至 2026-12-31，Tickets 页称至 2027-12-31，两处不一。开放时间：官网称全年时间不同、需查日历，偶因维护或换布景闭馆；官网日历未标日期的快照显示 11 月底–12 月初某日首场 10:00、末场 17:00、闭馆 21:00，另一日首场 09:00、末场 18:30、闭馆 22:00；Visit London 称首场 09:00、末场 16:00–18:30 视季节而定。无固定规律，hours 仍为 null。接驳巴士据官网 Getting Here 页：约 15 分钟，09:20 起至少每 30 分钟一班（首场 09:00 时 08:15 起加开），需向保安出示当日门票或预订确认，末班回程在闭馆时发车；检索摘要称车费含在门票内，但未见原文逐字，是否另收费未确认，已去掉“车费另付”的说法。闭馆：12-25 据第三方指南（thebettervacation，称 25 日闭馆、26 日偶尔闭馆），官网 2026 年 12 月日历未能看到，12-26、1/1 未核实。Hogwarts in the Snow 2026–27 日期 11/14–1/17 据 London Tickets 列表，官网 festive reception 页确认 2026-11-14 起圣诞布置。",
    "verified": "2026-10-07",
-   "unverified": true
+   "hoursVary": true,
+   "calendarUrl": "https://www.wbstudiotour.co.uk/opening-times/"
   },
   {
    "id": "london-windsor-castle",
@@ -5972,6 +5980,7 @@
    "booking": "大厅座位少，名家独奏会常提前售罄，建议在官网提前购票（每笔订单收 £4 手续费）；电话票房 020 7935 2141 每天 10:00–18:00，12 月 25、26 日票房不接受电话和现场订票，网上可随时购票",
    "sourceUrl": "https://www.wigmore-hall.org.uk/visit-us",
    "sources": [
+    "https://www.wigmore-hall.org.uk/whats-on",
     "https://www.wigmore-hall.org.uk/visit-us",
     "https://www.wigmore-hall.org.uk/box-office-help/faq",
     "https://www.wigmore-hall.org.uk/whats-on/series/sunday-morning-concerts",
@@ -5981,9 +5990,10 @@
     "https://www.wigmore-hall.org.uk/whats-on/202607251930",
     "https://www.wigmore-hall.org.uk/whats-on/202604261930"
    ],
-   "verifyNote": "2026-10-07 经官网搜索摘要核实：周日上午音乐会 11:30 开始、约 1 小时无中场、统一 £18，2026 年 10 月 25 日及 11 月 1、8、29 日均有场次（Sunday Morning Concerts 系列页）；晚场 19:30 开演（据官网 2026 年场次页地址，如 2026-07-25 周六、2026-04-26 周日 19:30）；Under 35s £5 票适用于部分场次、需在账户填写出生日期并带证件；2026 年 9 月起 8–24 岁有限量免费票（每人 2 张）；每笔订单 £4 手续费；现场票房时间：有日场和晚场的日子 10:00–19:30，只有晚场 11:30–19:30，无晚场 10:00–17:00（因随演出日程变化，hours 仍为 null）；电话票房每天 10:00–18:00；圣诞节和节礼日票房不接受电话与现场订票。未核实：周一 13:00 午间音乐会的固定日期与时间（slots 中 Mo 13:00 仍为既有知识）、晚场常规票价区间、12 月 24–26 日及 1 月 1 日是否有演出；坐标未复核。",
+   "verifyNote": "节目每天不同：slots 为常规开场时间（晚场 19:30、周日上午 11:30、周一午间 13:00），当天有没有演出以官网 What's On 为准。2026-10-07 经官网搜索摘要核实：周日上午音乐会 11:30 开始、约 1 小时无中场、统一 £18，2026 年 10 月 25 日及 11 月 1、8、29 日均有场次（Sunday Morning Concerts 系列页）；晚场 19:30 开演（据官网 2026 年场次页地址，如 2026-07-25 周六、2026-04-26 周日 19:30）；Under 35s £5 票适用于部分场次、需在账户填写出生日期并带证件；2026 年 9 月起 8–24 岁有限量免费票（每人 2 张）；每笔订单 £4 手续费；现场票房时间：有日场和晚场的日子 10:00–19:30，只有晚场 11:30–19:30，无晚场 10:00–17:00（因随演出日程变化，hours 仍为 null）；电话票房每天 10:00–18:00；圣诞节和节礼日票房不接受电话与现场订票。未核实：周一 13:00 午间音乐会的固定日期与时间（slots 中 Mo 13:00 仍为既有知识）、晚场常规票价区间、12 月 24–26 日及 1 月 1 日是否有演出；坐标未复核。",
    "verified": "2026-10-07",
-   "unverified": true
+   "hoursVary": true,
+   "calendarUrl": "https://www.wigmore-hall.org.uk/whats-on"
   },
   {
    "id": "london-ronnie-scotts",
@@ -9504,7 +9514,8 @@
     "https://www.templechurch.com/services-and-ceremonies/weekly-services"
    ],
    "verifyNote": "据官网（Opening Times & Admission Charges 页、About 页与首页，检索摘要）：教堂一般周一至周五 10:00–16:00 对参观者开放；官网日历标注周六（如 Sat Oct 10，即 2026 年）整天不开放参观，周日同样不开放；部分日子提前至 14:00 关门或整天关闭（如 2026 年 5 月 25 日周一）。参观票 £5／优惠 £3，儿童、律师学院成员及职员与宾客免费，首页旧版本票价相同。最晚入场时间、圣诞及新年（12/24–26、1/1）安排官网摘要未列出，未核实；坐标未复核。",
-   "verified": "2026-10-07"
+   "verified": "2026-10-07",
+   "calendarUrl": "https://www.templechurch.com/contact-and-find-us/opening-times-and-charges"
   },
   {
    "id": "london-guildhall-art-gallery",
@@ -9883,7 +9894,8 @@
    ],
    "verifyNote": "开幕日 2026-11-28（周六）与常设展免费据伦敦博物馆官方新闻稿“London Museum in Smithfield will open its doors on 28 November 2026”（检索摘要，2026 年年中），IanVisits、Time Out、Londonist、Atelier Brueckner 一致（Londonist 页面标题写“December 2026”，正文为 11 月 28 日）。开放时间、闭馆日、是否需预约均未公布，故 hours 为 null；周五、六夜场只见于 Londonist，时间未知。dates 的 from 标出 11 月 28 日开幕、此前不开放；to 为 null，新馆为常设博物馆，没有结束日期。邮编官网写 EC1A 9AG，IanVisits 写 Charterhouse Street, EC1 9AG。Poultry Market 预计 2028 年开放据检索摘要。visitMin 与 score 为估计。坐标为估计值，未核对。",
    "verified": "2026-10-07",
-   "unverified": true
+   "unverified": true,
+   "hold": "暂缓：11 月 28 日开幕已官宣，但开放时间与是否需预约尚未公布"
   },
   {
    "id": "london-battersea-park-fireworks-2026",
@@ -10158,7 +10170,8 @@
    ],
    "verifyNote": "2026 年亮灯日期官方尚未公布：Londonist 2026 追踪页按往年规律推测牛津街约 11 月 2 日、摄政街约 11 月 5 日亮灯（非官方），并称 Oxford Street Development Corporation 8 月表示正与负责圣诞灯饰的 New West End Company 协调，说明 2026 年灯饰会照常举办。参考：2025 年 Time Out 列牛津街 11 月 3 日、摄政街 11 月 6 日亮灯。dates 起始日取 Londonist 推测值，结束日 2027-01-06 为按往年“灯饰挂到 1 月初”惯例的估计，均未核实；每日亮灯时段未见公布，街道本身全天开放故用 24/7。免费为公共街道性质。sourceUrl 为官方站点主页，本次未检索到其 2026 页面；地址邮编仅写到邮区。",
    "verified": "2026-10-07",
-   "unverified": true
+   "unverified": true,
+   "hold": "暂缓：2026 年亮灯与撤灯日期官方尚未公布"
   },
   {
    "id": "london-carnaby-christmas-lights-2026",
@@ -10210,7 +10223,8 @@
    ],
    "verifyNote": "亮灯日 2026-11-04（周三）及 90 年代怀旧主题据 Londonist《Carnaby And Covent Garden Christmas Lights: 2026 Switch-On Dates Revealed》；未检索到 Carnaby/Shaftesbury Capital 的 2026 官方公告（其最新新闻为 2025-09-23 的“All is Bright”）。一篇未注明日期的 Retail Destination 文章写 11 月 7 日，与 Londonist 冲突，取较新的 Londonist。结束日 2027-01-06 为按往年惯例的估计，未核实；每日亮灯时段未公布，街道全天开放故用 24/7。免费为公共街道性质。地址邮编仅写到邮区。",
    "verified": "2026-10-07",
-   "unverified": true
+   "unverified": true,
+   "hold": "暂缓：2026 年亮灯日只见于媒体报道，撤灯日期未公布"
   },
   {
    "id": "london-leicester-square-christmas-2026",

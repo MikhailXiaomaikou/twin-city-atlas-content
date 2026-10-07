@@ -814,7 +814,7 @@
   }
   /** Validate the guide file: places with an id, coordinates and a known shape; drop ones whose dates have passed. */
   function readGuide(guide, json) {
-    const out = { ok: false, error: null, places: [], overlays: {}, routes: [], tips: [], updated: '', ended: 0 };
+    const out = { ok: false, error: null, places: [], overlays: {}, routes: [], tips: [], updated: '', ended: 0, held: 0 };
     if (!guide) return out;
     if (guide instanceof Error) { out.error = guide; return out; }
     if (typeof guide !== 'object' || !Array.isArray(guide.places)) { out.error = new Error('shape'); return out; }
@@ -827,6 +827,7 @@
       if (!id || !TOKEN_RE.test(id) || seen.has(id) || contentIds.has(id)) continue;
       if (num(g.lat) == null || num(g.lng) == null) continue;
       if (g.dates && str(g.dates.to) && today && str(g.dates.to) < today) { out.ended += 1; continue; }
+      if (str(g.hold)) { out.held += 1; continue; } // kept for later (e.g. dates not announced yet), not shown
       seen.add(id);
       out.places.push(g);
     }
@@ -855,6 +856,8 @@
       p.guide = byId.has(p.id);
       p.zh = str(g.zh);
       p.unverified = g.unverified === true;
+      p.vary = g.hoursVary === true;
+      p.calendarUrl = safeUrl(g.calendarUrl) ? str(g.calendarUrl) : '';
       if (P && p.hasCoords) {
         p.node = P.compilePlace({ id: p.id, name: p.name, category: p.category, lat: p.lat, lng: p.lng }, g);
         p.node.place = p;
@@ -1028,7 +1031,7 @@
       meta: { format: str(json.format), version: str(json.version), kind: str(json.kind), coordinateSystem: str(json.coordinateSystem) },
       places, placeById, groups, events, eventsByPlace, seriesById, sources, sourcesByPlace, licenses,
       nodes: places.filter((p) => p.node).map((p) => p.node),
-      guide: { ok: gd.ok, error: gd.error, count: places.filter((p) => p.guide).length, overlays: places.filter((p) => p.g && !p.guide).length, updated: gd.updated, routes: gd.routes, tips: gd.tips, ended: gd.ended },
+      guide: { ok: gd.ok, error: gd.error, count: places.filter((p) => p.guide).length, overlays: places.filter((p) => p.g && !p.guide).length, updated: gd.updated, routes: gd.routes, tips: gd.tips, ended: gd.ended, held: gd.held },
     };
   }
 
@@ -2367,10 +2370,12 @@
     const latest = d.places.map((p) => p.verifiedAt).filter((x) => x != null).reduce((m, x) => Math.max(m, x), 0);
     const toSources = h('a', { class: 'link', href: '#sources', 'data-route': 'sources' }, '查看全部来源');
     const unv = d.places.filter((p) => p.unverified).length;
+    const vary = d.places.filter((p) => p.vary).length;
+    const extra = [unv ? `${unv} 处标“待核实”` : '', vary ? `${vary} 处时间每天不同（附官网日历）` : '', d.guide.held ? `另有 ${d.guide.held} 处等官方公布后再显示` : ''].filter(Boolean);
     return h('p', { class: 'foot' },
       `资料来自公开数据文件 content.json（${d.meta.format || '格式未注明'} v${d.meta.version || '?'}，坐标 ${d.meta.coordinateSystem || '未注明'}）`,
       latest ? `，地点最近核验于 ${ymd(latest, VERIFY_TZ)}。` : '。',
-      d.guide.count ? `伦敦另有攻略层 ${GUIDE_PATH} 的 ${d.guide.count} 处（仅网页版）${unv ? `，其中 ${unv} 处标“待核实”` : ''}。` : '',
+      d.guide.count ? `伦敦另有攻略层 ${GUIDE_PATH} 的 ${d.guide.count} 处（仅网页版）${extra.length ? `；${extra.join('，')}` : ''}。` : '',
       '每条都附来源链接；出发前请以来源为准。', toSources);
   }
 
@@ -3431,6 +3436,12 @@
       return { text: `${f.mo}月${f.d}日开始`, cls: 'is-later' };
     }
     const st = P.statusAt(node, nowL, sunFor(nowL), sunFor(P.addDays(nowL, -1)));
+    if (node.vary) { // the hours are a cautious typical window: never claim more than that
+      if (st.state === 'open') return { text: '一般这时开着 · 以官网日历为准', cls: 'is-open' };
+      if (st.state === 'slots' && st.nextSlot != null) return { text: `今天一般 ${clock(st.nextSlot)} 开场 · 以官网为准`, cls: 'is-open' };
+      if (st.state === 'closed' && st.opensAt != null) return { text: `一般 ${clock(st.opensAt)} 开门 · 以官网日历为准`, cls: 'is-closed' };
+      return { text: '时间每天不同 · 查官网日历', cls: 'is-unknown' };
+    }
     if (st.state === 'open') {
       if (st.always) return { text: '随时可去', cls: 'is-open' };
       const pastEntry = st.lastEntryAt != null && st.lastEntryAt <= nowL.min;
@@ -3453,7 +3464,12 @@
     el.textContent = s.text;
     el.className = `${el.dataset.base || 'live'} ${s.cls}`;
   }
-  const unverifiedBadge = (p) => (p && p.unverified ? h('span', { class: 'badge badge--soft', title: '本条依据既有公开资料整理，本轮未能联网逐项核实；出发前请查官网' }, '待核实') : null);
+  function unverifiedBadge(p) {
+    if (!p) return null;
+    if (p.unverified) return h('span', { class: 'badge badge--soft', title: '开放时间各来源说法不一或尚未确认（原因见地点页的核验说明）；出发前请查官网' }, '待核实');
+    if (p.vary) return h('span', { class: 'badge badge--soft', title: '开放时间每天不同：规划按保守时段估算；出发前请在官网日历查当天时间' }, '时间每天不同');
+    return null;
+  }
 
   /* ------------------------------------------------------------------ guide: plan state */
 
@@ -4127,6 +4143,11 @@
     if (res.needs.lunch && !res.hadLunch) notes.push('没排进午饭：附近合适的餐厅在这个时段不开，或时间太紧。');
     if (res.needs.dinner && !res.hadDinner) notes.push('没排进晚饭：可以把时间条往后拉一点。');
     for (const u of res.unplaced) notes.push(`必去“${u.node.zh || u.node.name}”没排进去：${u.why}。`);
+    const nm = (s) => `“${s.node.zh || s.node.name}”`;
+    const vary = res.stops.filter((s) => s.node.vary).map(nm);
+    const unv = res.stops.filter((s) => s.node.place && s.node.place.unverified).map(nm);
+    if (vary.length) notes.push(`${vary.join('、')}的开放时间每天不同，这里按保守时段排；出发前在官网日历确认当天时间。`);
+    if (unv.length) notes.push(`${unv.join('、')}的开放时间待核实，出发前请查官网。`);
     if (!res.stops.length) {
       parts.push(h('div', { class: 'empty' }, h('p', { class: 'empty__title' }, '这个时段排不出行程'),
         h('p', null, '所选时段里，从出发点能赶到、又开门的地点太少。试试拉长时间条、换一天，或去掉“只去免费的”等选项。')));
@@ -4165,7 +4186,7 @@
     const why = stopReasons(s, res);
     const iv = n.slots ? null : TP().intervalsOn(n, date, res.sun);
     const facts = [];
-    if (iv) facts.push(`当天 ${ivText(iv)}`);
+    if (iv) facts.push(n.vary ? `按 ${ivText(iv)} 估算` : `当天 ${ivText(iv)}`);
     if (n.lastEntry != null && iv && iv.length) facts.push(`最后入场 ${clock(iv[iv.length - 1][1] - n.lastEntry)}`);
     facts.push(pence(n.price));
     facts.push(INDOOR_ZH[n.indoor]);
@@ -4186,7 +4207,8 @@
           : h('span', { class: 'itin__name' }, n.name),
         n.event && p ? h('span', { class: 'itin__where' }, `地点：${p.zh || p.name}`) : null,
         why.length ? h('span', { class: 'itin__why' }, why.map((w) => h('span', { class: 'why' }, w))) : null,
-        h('span', { class: 'itin__facts' }, facts.join(' · '), p && p.unverified ? [' ', unverifiedBadge(p)] : null),
+        h('span', { class: 'itin__facts' }, facts.join(' · '), p && (p.unverified || p.vary) ? [' ', unverifiedBadge(p)] : null,
+          p && p.calendarUrl ? [' ', extLink(p.calendarUrl, '官网当天时间', 'link ext')] : null),
         p && p.g && p.g.tips && p.g.tips.length ? h('span', { class: 'itin__tip' }, p.g.tips[0]) : null),
       h('span', { class: 'itin__act' }, p && !n.event ? pinButton(p, { small: true, fk: 'ipin:' }) : null, swap));
     if (p) {
@@ -4229,7 +4251,9 @@
     const lines = [`伦敦行程 · ${dateZh(res.date)} ${clock(res.window[0])}–${clockNext(res.endT)}（从 ${res.start.label} 出发）`];
     res.stops.forEach((s, i) => {
       lines.push(`  ↓ ${legText(s.leg)}`);
-      lines.push(`${i + 1}. ${clock(s.start)}–${clockNext(s.end)}  ${s.node.event ? s.node.name : placeLabel(s.node)}${s.meal === 'lunch' ? '（午饭）' : s.meal === 'dinner' ? '（晚饭）' : ''}`);
+      const cal = s.node.place && s.node.place.calendarUrl;
+      lines.push(`${i + 1}. ${clock(s.start)}–${clockNext(s.end)}  ${s.node.event ? s.node.name : placeLabel(s.node)}${s.meal === 'lunch' ? '（午饭）' : s.meal === 'dinner' ? '（晚饭）' : ''}${s.node.vary ? '（时间每天不同，以官网日历为准）' : ''}`);
+      if (cal && s.node.vary) lines.push(`   官网日历：${cal}`);
     });
     if (res.back) lines.push(`  ↓ ${legText(res.back)}，回到出发点`);
     lines.push('', '由 双城图志 生成。路上时间为估算，开放时间与票价以官网为准。');
@@ -4357,6 +4381,10 @@
       if (n.best.size) facts.push(h('dt', null, '最佳时段'), h('dd', null, Array.from(n.best).map((b) => BEST_ZH[b] || b).join('、')));
       facts.push(h('dt', null, '推荐度'), h('dd', null, h('span', { class: 'stars', 'aria-label': `${n.score} 分（满分 5）` }, '★'.repeat(n.score), h('span', { class: 'stars__off' }, '★'.repeat(5 - n.score))), n.score >= 5 ? ' 初访必去' : n.score === 4 ? ' 很值得' : ''));
     }
+    if (p.calendarUrl) {
+      facts.push(h('dt', null, '开放时间'), h('dd', null, extLink(p.calendarUrl, p.vary ? '官网日历（每天不同）' : '官网开放时间'),
+        h('span', { class: 'muted' }, p.vary ? ' · 下表是规划用的保守时段，出发前查当天时间' : ' · 个别日子有调整，以官网为准')));
+    }
     if (g.station) facts.push(h('dt', null, '交通'), h('dd', null, g.station));
     if (g.booking) facts.push(h('dt', null, '预约'), h('dd', null, g.booking));
     if (facts.length) sec.appendChild(h('dl', { class: 'facts' }, facts));
@@ -4384,6 +4412,11 @@
         h('td', { class: (iv && !iv.length) || (n.slots && !x.slots.length) ? 'is-off' : null }, text, isToday ? h('span', { class: 'vh' }, '（今天）') : null));
     });
     const notes = [];
+    if (n.vary) {
+      notes.push(n.slots ? '节目每天不同：表中是常规开场时间，当天有没有演出以官网节目单为准'
+        : n.hours ? '时间每天不同：表中是规划用的保守时段（官网各日里最短的），当天实际时间以官网日历为准'
+          : '时间每天不同，需按官网日历预约场次，所以不自动排进行程');
+    }
     if (n.dates) notes.push(n.dates.to ? `只在 ${n.dates.from} 至 ${n.dates.to} 期间` : `${n.dates.from} 起开放`);
     if (n.seasonal.length) notes.push(`季节性时间：${n.seasonal.map((s) => `${s.from.replace('-', '月')}日–${s.to.replace('-', '月')}日另有安排`).join('；')}（表中已按日期计算）`);
     if (n.closed.size) notes.push(`闭馆/休息日：${Array.from(n.closed).sort().map((x) => x.length === 5 ? x.replace('-', '月') + '日' : x).join('、')}`);

@@ -240,6 +240,7 @@
       plan: g.plan !== false,
       meal: base.category === 'FOOD' && g.meal !== false, // false for coffee bars and tea rooms
       spend: base.category === 'FOOD' || /人均/.test(g.priceNote || ''), // price is food & drink per head, not a ticket
+      vary: g.hoursVary === true, // hours/slots change day to day: what is here is a cautious typical window
       errors,
     };
   }
@@ -411,7 +412,7 @@
       let why = '';
       if (xmas && !(n.hours && n.hours.always)) why = '圣诞节当天关闭';
       else if (slots && !slots.some((s) => s - 15 >= t0 && s + Math.min(dur, 60) <= t1)) why = slots.length ? '所选时段内没有场次' : '这一天没有场次';
-      else if (!slots && iv == null) why = '开放时间未知';
+      else if (!slots && iv == null) why = n.vary ? '开放时间每天不同，先在官网日历查好当天时间' : '开放时间未知';
       else if (!slots && !iv.some(([o, c]) => Math.min(c, t1) - Math.max(o, t0) >= Math.min(dur * 0.7, 45))) why = iv.length ? '所选时段内不开放' : '这一天不开放';
       if (!why) {
         const out = travel(opts.start, n, legOpt).min;

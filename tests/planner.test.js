@@ -33,7 +33,7 @@ test('London wall clock and sun', () => {
 
 // planner nodes from the real guide data
 const nodes = [];
-for (const r of guide.places) nodes.push(P.compilePlace({ id: r.id, name: r.name, category: r.category, lat: r.lat, lng: r.lng }, r));
+for (const r of guide.places) if (!r.hold) nodes.push(P.compilePlace({ id: r.id, name: r.name, category: r.category, lat: r.lat, lng: r.lng }, r));
 for (const [id, o] of Object.entries(guide.overlays)) {
   const p = content.places.find((x) => x.id === id);
   nodes.push(P.compilePlace({ id, name: p.name, category: p.category, lat: p.latitude, lng: p.longitude }, o));
@@ -87,6 +87,23 @@ test('open-ended dates: a new place counts from its opening day', () => {
   assert.deepStrictEqual(n.dates, { from: '2026-11-28', to: null });
   assert.strictEqual(P.runsOn(n, P.parseDateKey('2026-11-27')), false);
   assert.strictEqual(P.runsOn(n, P.parseDateKey('2027-06-01')), true);
+});
+
+test('day-varying places: planned inside their cautious window, or explained', () => {
+  const pinned = new Set(['london-madame-tussauds', 'london-dennis-severs-house']);
+  const r = plan('2026-10-08', [570, 1080], { pinned });
+  const mt = r.stops.find((s) => s.node.id === 'london-madame-tussauds');
+  assert.ok(mt && mt.node.vary && mt.start >= 600 && mt.end <= 900, mt && `${hm(mt.start)}–${hm(mt.end)}`);
+  const ds = r.unplaced.find((u) => u.node.id === 'london-dennis-severs-house');
+  assert.ok(ds && /官网日历/.test(ds.why), ds && ds.why);
+  for (const g of guide.places) if (g.hoursVary) assert.ok(/^https:\/\//.test(g.calendarUrl), g.id);
+});
+
+test('held places are not planned', () => {
+  const held = new Set(guide.places.filter((g) => g.hold).map((g) => g.id));
+  assert.ok(held.size >= 1);
+  assert.ok(nodes.every((x) => !held.has(x.id)));
+  for (const r of guide.routes) for (const id of r.stops) assert.ok(!held.has(id), `${r.id} uses held ${id}`);
 });
 
 test('Christmas Day: only open-air places, on foot', () => {
