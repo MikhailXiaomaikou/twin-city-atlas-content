@@ -4383,7 +4383,7 @@
         h('td', { class: (iv && !iv.length) || (n.slots && !x.slots.length) ? 'is-off' : null }, text, isToday ? h('span', { class: 'vh' }, '（今天）') : null));
     });
     const notes = [];
-    if (n.dates) notes.push(`只在 ${n.dates.from} 至 ${n.dates.to} 期间`);
+    if (n.dates) notes.push(n.dates.to ? `只在 ${n.dates.from} 至 ${n.dates.to} 期间` : `${n.dates.from} 起开放`);
     if (n.seasonal.length) notes.push(`季节性时间：${n.seasonal.map((s) => `${s.from.replace('-', '月')}日–${s.to.replace('-', '月')}日另有安排`).join('；')}（表中已按日期计算）`);
     if (n.closed.size) notes.push(`闭馆/休息日：${Array.from(n.closed).sort().map((x) => x.length === 5 ? x.replace('-', '月') + '日' : x).join('、')}`);
     if (n.lastEntry != null) notes.push(`最后入场为关门前 ${n.lastEntry} 分钟`);

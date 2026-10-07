@@ -215,7 +215,8 @@
     const slots = parseSlots(g.slots);
     if (slots && slots.error) errors.push(`slots: ${slots.error}`);
     const closed = new Set((Array.isArray(g.closed) ? g.closed : []).filter((x) => /^(\d{4}-)?\d{2}-\d{2}$/.test(x)));
-    const dates = g.dates && parseDateKey(g.dates.from) && parseDateKey(g.dates.to) ? { from: g.dates.from, to: g.dates.to } : null;
+    // dates: { from, to } for things that exist only for a while; `to` may be null for a new place opening on `from`
+    const dates = g.dates && parseDateKey(g.dates.from) && (g.dates.to == null || parseDateKey(g.dates.to)) ? { from: g.dates.from, to: g.dates.to || null } : null;
     const visit = Number(g.visitMin);
     return {
       id: base.id,
@@ -244,7 +245,7 @@
 
   /** Is the node running on this date at all (date range, closure dates)? */
   function runsOn(node, date) {
-    if (node.dates && (date.key < node.dates.from || date.key > node.dates.to)) return false;
+    if (node.dates && (date.key < node.dates.from || (node.dates.to && date.key > node.dates.to))) return false;
     if (node.closed.has(date.md) || node.closed.has(date.key)) return false;
     return true;
   }

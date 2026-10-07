@@ -77,6 +77,13 @@ test('dated closures are respected (Royal Observatory shut from 2 Nov 2026)', ()
   assert.ok(after.unplaced.some((u) => u.node.id === 'london-royal-observatory-greenwich'));
 });
 
+test('open-ended dates: a new place counts from its opening day', () => {
+  const n = P.compilePlace({ id: 'x', name: 'x', category: 'CULTURE', lat: 51.5, lng: -0.1 }, { hours: 'Mo-Su 10:00-17:00', dates: { from: '2026-11-28', to: null } });
+  assert.deepStrictEqual(n.dates, { from: '2026-11-28', to: null });
+  assert.strictEqual(P.runsOn(n, P.parseDateKey('2026-11-27')), false);
+  assert.strictEqual(P.runsOn(n, P.parseDateKey('2027-06-01')), true);
+});
+
 test('Christmas Day: only open-air places, on foot', () => {
   const r = plan('2026-12-25', [600, 1080]);
   assert.ok(r.xmas);
