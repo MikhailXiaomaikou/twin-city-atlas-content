@@ -15,7 +15,7 @@ App 内“Codex 内容后台”地址：
 同一份 `content.json` 的浏览页面：伦敦 / 福州 / 双城对照地图，地点按区域路牌分组，活动按当地日期排成时刻表（可导出 .ics 加入日历），并列出每条资料的来源与核验状态。
 
 - 纯静态页面，无构建步骤：`index.html`、`assets/`（样式、脚本、字体）、`vendor/`（Leaflet 与聚合插件）。
-- 不依赖外部 CDN；只有底图瓦片来自 CARTO（© OpenStreetMap contributors © CARTO）。底图加载失败时，点位与列表仍可使用。
+- 不依赖外部 CDN；只有底图瓦片来自 CARTO（© OpenStreetMap contributors © CARTO）。CARTO 连不上时自动改用 OpenStreetMap 官方瓦片（深色模式下反色显示），并记住一天；两者都连不上时显示提示，点位与列表仍可使用。
 - `assets/planner.js` 是攻略规划的纯函数模块（开放时间语法、日出日落、伦敦当地时间、交通估算、附近推荐、行程规划），浏览器和 Node 都能用；`node tests/planner.test.js` 运行检查。
 - 链接可直接定位：`#london`、`#fuzhou`、`#both`、`#guide`（伦敦攻略）、`#events`、`#sources`，或某个地点的 id（如 `#london-british-museum`、`#london-tower-of-london`）。
 - 本地预览：在仓库根目录运行 `python3 -m http.server`，打开 http://localhost:8000/ 。

@@ -104,11 +104,23 @@
   const HOW_ZH = { postcode: '按邮编对应', coords: '按坐标对应', name: '按名称对应', region: '按区域名对应', site: '按网站对应', guide: '攻略资料引用' };
   const GUIDE_LICENSE = '仅整理必要事实；原始网页及图片版权归来源方。';
 
-  const TILE_URL = {
-    light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-  };
-  const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>';
+  // Basemap tiles, in order of preference. When a provider is unreachable (blocked network, outage) the map falls
+  // back to the next one; OpenStreetMap's own tiles have no dark style, so they are inverted in dark mode (CSS).
+  const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors';
+  const TILE_PROVIDERS = [
+    {
+      key: 'carto',
+      url: { light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' },
+      opts: { subdomains: 'abcd', maxZoom: 20, attribution: `${OSM_ATTRIBUTION} &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>` },
+    },
+    {
+      key: 'osm',
+      url: { light: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', dark: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png' },
+      opts: { maxNativeZoom: 19, maxZoom: 20, attribution: OSM_ATTRIBUTION },
+    },
+  ];
+  const STORE_TILES = 'tca.tiles'; // remembers a fallback for a day, so a blocked provider is not retried on every load
+  const TILE_FAIL = 4; // errors with no tile loaded before giving up on a provider
 
   /* ------------------------------------------------------------------ small utilities */
 
@@ -1363,13 +1375,10 @@
           layer: null, solo: L.layerGroup().addTo(map), ghost: L.layerGroup().addTo(map),
           markers: new Map(), where: new Map(), muted: new Set(),
           ring: null, selected: null, fitted: false, pendingFocus: null,
-          tiles: null, theme: effectiveTheme(), tileErr: 0, tileOk: 0,
+          tiles: null, theme: effectiveTheme(), tileErr: 0, tileOk: 0, provider: startProvider(),
           hotCluster: null, roving: null, refocus: null, uiRaf: 0,
         };
-        m.tiles = L.tileLayer(TILE_URL[m.theme], { subdomains: 'abcd', maxZoom: 20, attribution: TILE_ATTRIBUTION })
-          .on('tileerror', () => { m.tileErr += 1; updateTileNotice(m); })
-          .on('tileload', () => { m.tileOk += 1; updateTileNotice(m); })
-          .addTo(map);
+        setTileLayer(m, m.provider);
         el.setAttribute('role', 'region');
         el.setAttribute('aria-roledescription', '地图');
         el.setAttribute('aria-label', `${CITIES[key].zh}地图：方向键平移，加减号缩放。点位：Tab 进入后用方向键在点位之间移动，Enter 打开`);
@@ -1399,9 +1408,45 @@
     for (const k of Object.keys(maps)) delete maps[k];
   }
 
+  /** The provider to start with: the remembered fallback (less than a day old), else the first. */
+  function startProvider() {
+    try {
+      const v = JSON.parse(store.get(STORE_TILES) || 'null');
+      const i = v ? TILE_PROVIDERS.findIndex((p) => p.key === v.key) : -1;
+      if (i > 0 && Date.now() - v.at < DAY) return i;
+    } catch { /* ignore */ }
+    return 0;
+  }
+  function setTileLayer(m, i) {
+    const L = window.L;
+    const prov = TILE_PROVIDERS[i];
+    if (m.tiles) m.map.removeLayer(m.tiles);
+    m.provider = i;
+    m.tileErr = 0;
+    m.tileOk = 0;
+    m.frame.dataset.tiles = prov.key;
+    const layer = L.tileLayer(prov.url[m.theme], Object.assign({ className: 'tiles-' + prov.key }, prov.opts));
+    m.tiles = layer;
+    layer
+      .on('tileerror', () => {
+        if (m.tiles !== layer) return; // late events from a layer already replaced
+        m.tileErr += 1;
+        if (m.tileOk === 0 && m.tileErr >= TILE_FAIL && m.provider < TILE_PROVIDERS.length - 1) {
+          setTileLayer(m, m.provider + 1);
+          store.set(STORE_TILES, JSON.stringify({ key: TILE_PROVIDERS[m.provider].key, at: Date.now() }));
+          return;
+        }
+        updateTileNotice(m);
+      })
+      .on('tileload', () => { if (m.tiles !== layer) return; m.tileOk += 1; updateTileNotice(m); })
+      .addTo(m.map);
+    layer.bringToBack();
+  }
+
   function updateTileNotice(m) {
     const note = $('[data-tile-notice]', m.frame);
-    const failing = m.tileErr >= 2 && m.tileOk === 0;
+    // only once every provider has been tried
+    const failing = m.provider === TILE_PROVIDERS.length - 1 && m.tileErr >= 2 && m.tileOk === 0;
     if (failing && note.hidden) {
       note.replaceChildren(icon('warn'), h('span', null, '底图暂时无法加载，点位与列表仍可使用。'));
       note.hidden = false;
@@ -1418,7 +1463,7 @@
       m.theme = theme;
       m.tileErr = 0;
       m.tileOk = 0;
-      m.tiles.setUrl(TILE_URL[theme]);
+      m.tiles.setUrl(TILE_PROVIDERS[m.provider].url[theme]);
     }
   }
 

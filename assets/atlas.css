@@ -1392,3 +1392,9 @@ a.itin__name:hover span { text-decoration: underline; text-underline-offset: 3px
 @media (prefers-reduced-motion: reduce) {
   .geo-dot::after { animation: none; }
 }
+
+/* fallback basemap (OpenStreetMap standard tiles) has no dark style: invert it in dark mode */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .mapframe[data-tiles="osm"] .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.6); }
+}
+:root[data-theme="dark"] .mapframe[data-tiles="osm"] .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.6); }
