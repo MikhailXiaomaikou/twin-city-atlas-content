@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>双城图志 Twin City Atlas</title>
-<meta name="description" content="伦敦与福州的公共地点与活动：博物馆、课程、食物市场、公园、棋会与校园。每条资料都注明来源、核验日期与坐标精度。">
+<meta name="description" content="伦敦与福州的公共地点与活动，加上伦敦攻略：名胜、博物馆、观景、公园、美食、夜生活、购物与街区漫步；按你的位置给出此刻能去的地方，拖动时间条自动规划行程。每条资料都注明来源与核验情况。">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#edf0f2" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#121a21" media="(prefers-color-scheme: dark)">
@@ -26,6 +26,7 @@
 <script src="vendor/leaflet/leaflet.js" defer></script>
 <!-- vendor/leaflet.markercluster/leaflet.markercluster.js is loaded by atlas.js once Leaflet is present,
      so a missing Leaflet never makes the cluster plugin throw; without it the map shows plain markers. -->
+<script src="assets/planner.js" defer></script>
 <script src="assets/atlas.js" defer></script>
 </head>
 <body>
@@ -60,6 +61,7 @@
   <section class="panel" id="panel" aria-label="地点、活动与来源" tabindex="-1">
     <div class="tabs" role="tablist" aria-label="资料分类">
       <button type="button" class="tab" role="tab" id="tab-places" aria-controls="view-places" aria-selected="true" data-tab="places">地点 <span class="num" data-count="places"></span></button>
+      <button type="button" class="tab" role="tab" id="tab-guide" aria-controls="view-guide" aria-selected="false" tabindex="-1" data-tab="guide">攻略 <span class="tab__sub">规划</span></button>
       <button type="button" class="tab" role="tab" id="tab-events" aria-controls="view-events" aria-selected="false" tabindex="-1" data-tab="events">活动 <span class="num" data-count="events"></span></button>
       <button type="button" class="tab" role="tab" id="tab-sources" aria-controls="view-sources" aria-selected="false" tabindex="-1" data-tab="sources">来源 <span class="num" data-count="sources"></span></button>
     </div>
@@ -71,6 +73,7 @@
           <p class="state__body">地点、活动和来源都来自同一份公开数据文件。</p>
         </div>
       </div>
+      <div class="view" id="view-guide" role="tabpanel" aria-labelledby="tab-guide" hidden></div>
       <div class="view" id="view-events" role="tabpanel" aria-labelledby="tab-events" hidden></div>
       <div class="view" id="view-sources" role="tabpanel" aria-labelledby="tab-sources" hidden></div>
     </div>
