@@ -457,9 +457,11 @@
 
     function fitWindow(c, arrive) {
       if (c.slots) {
+        const pre = c.n.event ? 10 : 15;
+        // a show: the evening performance when it fits the window, so the matinée doesn't eat lunch and the afternoon
+        const eve = c.n.category === 'NIGHT' && c.slots.some((s) => s >= 17 * 60 && s - pre >= arrive && s + c.dur <= t1);
         for (const s of c.slots) {
-          const pre = c.n.event ? 10 : 15;
-          if (s - pre < arrive) continue;
+          if (s - pre < arrive || (eve && s < 17 * 60)) continue;
           if (s - pre - arrive > 75 && !c.pinned) return null; // too long a wait for the next performance
           return { start: s - pre, end: s + c.dur, slot: s };
         }
@@ -730,7 +732,7 @@
       if (opts.rainy) v *= n.indoor === 'in' ? 1.4 : n.indoor === 'out' ? 0.35 : 0.9;
       if (kind === 'soon') v *= 0.7;
       if (kind === 'open' && room < 75 && st.left < DAY_MIN) reasons.push('closing');
-      if (n.price === 0 && !n.spend) reasons.push('free');
+      if (n.price === 0 && !n.spend && n.category !== 'SHOP') reasons.push('free');
       const score = v / (1 + tr.min / 12);
       out.push({ node: n, travel: tr, status: st, kind, score, reasons, room });
     }
