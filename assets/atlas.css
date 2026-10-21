@@ -635,7 +635,11 @@ details[open] > summary > .icon:first-child { transform: rotate(90deg); }
 .cluster-wrap.is-hot .cluster { box-shadow: 0 0 0 2px var(--marker-halo), 0 0 0 4px var(--accent), 0 1px 4px var(--marker-shadow); }
 .cluster-wrap:focus-visible .cluster { box-shadow: 0 0 0 2px var(--marker-halo), 0 0 0 4px var(--focus); }
 
-.fitctl button .icon, .minctl button .icon { width: 16px; height: 16px; }
+.fitctl button .icon, .minctl button .icon, .tilectl button .icon { width: 16px; height: 16px; }
+.tilectl button[aria-pressed="true"] { color: var(--accent, #c8102e); }
+/* bundled basemap: canvas tiles and the label canvas above them */
+.basemap-labels { position: absolute; left: 0; top: 0; pointer-events: none; }
+.leaflet-pane.leaflet-tcaBaseLabels-pane { pointer-events: none; }
 @media (min-width: 1024px) { .minctl { display: none; } }
 
 /* ---------- panel ---------- */

@@ -104,10 +104,14 @@
   const HOW_ZH = { postcode: '按邮编对应', coords: '按坐标对应', name: '按名称对应', region: '按区域名对应', site: '按网站对应', guide: '攻略资料引用' };
   const GUIDE_LICENSE = '仅整理必要事实；原始网页及图片版权归来源方。';
 
-  // Basemap tiles, in order of preference. When a provider is unreachable (blocked network, outage) the map falls
-  // back to the next one; OpenStreetMap's own tiles have no dark style, so they are inverted in dark mode (CSS).
+  // Basemap. The bundled vector basemap (basemap/<city>/, drawn by assets/basemap.js) needs no outside server and is
+  // the default. Online raster tiles are an option; when a provider is unreachable (blocked network, outage) the map
+  // falls back to the next one and finally to the bundled map. OpenStreetMap's own tiles have no dark style, so they
+  // are inverted in dark mode (CSS).
+  const BASEMAP_PATH = 'basemap';
   const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors';
   const TILE_PROVIDERS = [
+    { key: 'local', local: true },
     {
       key: 'carto',
       url: { light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' },
@@ -119,7 +123,7 @@
       opts: { maxNativeZoom: 19, maxZoom: 20, attribution: OSM_ATTRIBUTION },
     },
   ];
-  const STORE_TILES = 'tca.tiles'; // remembers a fallback for a day, so a blocked provider is not retried on every load
+  const STORE_TILES = 'tca.tiles'; // the reader's choice of basemap (bundled or online), and a fallback for a day
   const TILE_FAIL = 4; // errors with no tile loaded before giving up on a provider
 
   /* ------------------------------------------------------------------ small utilities */
@@ -191,6 +195,7 @@
     swap: [['path', { d: 'M3 5.5h9.5M10 3l2.5 2.5L10 8M13 10.5H3.5M6 8l-2.5 2.5L6 13' }]],
     walk: [['circle', { cx: 8.6, cy: 2.8, r: 1.3 }], ['path', { d: 'M7.6 5.5 6.4 9.2l2.3 1.6.7 3.6M7.6 5.5l2.2 1.6 1.9.4M6.4 9.2l-1.6 4.3M7.6 5.5 5.3 6.8 4.6 8.8' }]],
     tube: [['circle', { cx: 8, cy: 8, r: 5 }], ['path', { d: 'M1.8 8h12.4' }]],
+    layers: [['path', { d: 'M8 2.5 14 6 8 9.5 2 6z' }], ['path', { d: 'M2.6 9.2 8 12.3l5.4-3.1' }]],
     route: [['circle', { cx: 3.5, cy: 12.5, r: 1.5 }], ['circle', { cx: 12.5, cy: 3.5, r: 1.5 }], ['path', { d: 'M5 12.5h4.5a2.5 2.5 0 0 0 0-5h-3a2.5 2.5 0 0 1 0-5H11' }]],
   };
   function icon(name) {
@@ -1271,6 +1276,7 @@
   /* ------------------------------------------------------------------ maps */
 
   const maps = {};
+  window.tcaMaps = maps; // the Leaflet maps, for scripts and tests
   let PinIcon = null;
   let ClusterIcon = null;
   const clusterOfEl = new WeakMap();
@@ -1369,6 +1375,18 @@
           },
         });
         new MinControl().addTo(map);
+        const TileControl = L.Control.extend({
+          options: { position: 'topright' },
+          onAdd() {
+            const wrap = L.DomUtil.create('div', 'leaflet-bar tilectl');
+            const b = h('button', { type: 'button', 'aria-label': '切换在线/内置底图', 'aria-pressed': 'false', 'data-tile-toggle': '' }, icon('layers'));
+            b.addEventListener('click', () => setTileMode(TILE_PROVIDERS[maps[key].provider].local ? 'online' : 'local'));
+            wrap.appendChild(b);
+            L.DomEvent.disableClickPropagation(wrap);
+            return wrap;
+          },
+        });
+        new TileControl().addTo(map);
         // Zoom controls first in the DOM, so Tab reaches them before the markers (positioning is unaffected;
         // the attribution corner stays after the markers).
         const corner = el.querySelector('.leaflet-top.leaflet-right');
@@ -1378,7 +1396,7 @@
           layer: null, solo: L.layerGroup().addTo(map), ghost: L.layerGroup().addTo(map),
           markers: new Map(), where: new Map(), muted: new Set(),
           ring: null, selected: null, fitted: false, pendingFocus: null,
-          tiles: null, theme: effectiveTheme(), tileErr: 0, tileOk: 0, provider: startProvider(),
+          tiles: null, basemap: null, theme: effectiveTheme(), tileErr: 0, tileOk: 0, provider: startProvider(),
           hotCluster: null, roving: null, refocus: null, uiRaf: 0,
         };
         setTileLayer(m, m.provider);
@@ -1411,50 +1429,81 @@
     for (const k of Object.keys(maps)) delete maps[k];
   }
 
-  /** The provider to start with: the remembered fallback (less than a day old), else the first. */
+  /** The provider to start with: the bundled map, unless the reader chose the online tiles (and they were not found
+   *  unreachable within the last day). */
   function startProvider() {
     try {
       const v = JSON.parse(store.get(STORE_TILES) || 'null');
-      const i = v ? TILE_PROVIDERS.findIndex((p) => p.key === v.key) : -1;
-      if (i > 0 && Date.now() - v.at < DAY) return i;
+      if (v && v.mode === 'online') {
+        const i = TILE_PROVIDERS.findIndex((p) => p.key === v.key);
+        return i > 0 && v.at && Date.now() - v.at < DAY ? i : 1;
+      }
     } catch { /* ignore */ }
     return 0;
   }
   function setTileLayer(m, i) {
     const L = window.L;
     const prov = TILE_PROVIDERS[i];
+    if (m.basemap) { m.basemap.remove(); m.basemap = null; }
     if (m.tiles) m.map.removeLayer(m.tiles);
+    m.tiles = null;
     m.provider = i;
     m.tileErr = 0;
     m.tileOk = 0;
     m.frame.dataset.tiles = prov.key;
+    if (prov.local) {
+      if (!window.TCABasemap) { nextProvider(m); return; }
+      const bm = window.TCABasemap.create({ map: m.map, city: m.key.toLowerCase(), base: BASEMAP_PATH, theme: m.theme, font: getComputedStyle(doc.body).fontFamily });
+      m.basemap = bm;
+      bm.addTo(m.map);
+      bm.ready.then(() => { if (m.basemap === bm) { m.tileOk = 1; updateTileNotice(m); } }, () => { if (m.basemap === bm) nextProvider(m); });
+      paintTileToggle(m);
+      return;
+    }
     const layer = L.tileLayer(prov.url[m.theme], Object.assign({ className: 'tiles-' + prov.key }, prov.opts));
     m.tiles = layer;
     layer
       .on('tileerror', () => {
         if (m.tiles !== layer) return; // late events from a layer already replaced
         m.tileErr += 1;
-        if (m.tileOk === 0 && m.tileErr >= TILE_FAIL && m.provider < TILE_PROVIDERS.length - 1) {
-          setTileLayer(m, m.provider + 1);
-          store.set(STORE_TILES, JSON.stringify({ key: TILE_PROVIDERS[m.provider].key, at: Date.now() }));
-          return;
-        }
+        if (m.tileOk === 0 && m.tileErr >= TILE_FAIL) { nextProvider(m); return; }
         updateTileNotice(m);
       })
       .on('tileload', () => { if (m.tiles !== layer) return; m.tileOk += 1; updateTileNotice(m); })
       .addTo(m.map);
     layer.bringToBack();
+    paintTileToggle(m);
+  }
+  /** An online provider failed: the next one, and finally the bundled map (remembered for a day). */
+  function nextProvider(m) {
+    const next = m.provider + 1 < TILE_PROVIDERS.length ? m.provider + 1 : 0;
+    if (next === m.provider) { updateTileNotice(m); return; }
+    store.set(STORE_TILES, JSON.stringify({ mode: next === 0 ? 'local' : 'online', key: TILE_PROVIDERS[next].key, at: Date.now(), auto: true }));
+    setTileLayer(m, next);
+  }
+  function setTileMode(mode) {
+    const i = mode === 'online' ? 1 : 0;
+    store.set(STORE_TILES, JSON.stringify({ mode, key: TILE_PROVIDERS[i].key, at: 0 }));
+    for (const m of Object.values(maps)) setTileLayer(m, i);
+    announce(mode === 'online' ? '已切换到在线底图' : '已切换到内置底图');
+  }
+  function paintTileToggle(m) {
+    const b = $('[data-tile-toggle]', m.el);
+    if (!b) return;
+    const online = !TILE_PROVIDERS[m.provider].local;
+    b.setAttribute('aria-pressed', String(online));
+    b.title = online ? '在线底图（更详细，需能访问地图服务）· 点击换回内置底图' : '内置底图 · 点击换到在线底图（更详细，需能访问地图服务）';
   }
 
   function updateTileNotice(m) {
     const note = $('[data-tile-notice]', m.frame);
-    // only once every provider has been tried
-    const failing = m.provider === TILE_PROVIDERS.length - 1 && m.tileErr >= 2 && m.tileOk === 0;
+    // only when nothing could be shown at all
+    const failing = m.tileErr >= 2 && m.tileOk === 0 && !m.basemap;
     if (failing && note.hidden) {
       note.replaceChildren(icon('warn'), h('span', null, '底图暂时无法加载，点位与列表仍可使用。'));
       note.hidden = false;
       m.frame.classList.add('is-untiled');
-    } else if (!failing && m.tileOk > 0 && !note.hidden) {
+    } else if (!failing && !note.hidden) {
       note.hidden = true;
       m.frame.classList.remove('is-untiled');
     }
@@ -1462,8 +1511,10 @@
   function updateTiles() {
     const theme = effectiveTheme();
     for (const m of Object.values(maps)) {
-      if (!m.tiles || m.theme === theme) continue;
+      if (m.theme === theme) continue;
       m.theme = theme;
+      if (m.basemap) { m.basemap.setTheme(theme); continue; }
+      if (!m.tiles) continue;
       m.tileErr = 0;
       m.tileOk = 0;
       m.tiles.setUrl(TILE_PROVIDERS[m.provider].url[theme]);
